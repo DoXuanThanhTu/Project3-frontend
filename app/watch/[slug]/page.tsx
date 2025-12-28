@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Player from "@/components/movie/Player";
+import { IEpisode } from "@/types/movie.type";
 
 // ===== Types =====
 interface Episode {
@@ -117,7 +118,7 @@ export default function WatchPage() {
         setCurrentServer(defaultServer || null);
         const defaultEp =
           defaultServer?.episodes?.find(
-            (ep) => ep.episode_number === epNumber
+            (ep: IEpisode) => ep.episodeNumber === epNumber
           ) || defaultServer?.episodes?.[0];
         setCurrentEpisode(defaultEp || null);
       } catch (error) {

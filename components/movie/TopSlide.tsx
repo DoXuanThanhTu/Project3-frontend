@@ -96,7 +96,7 @@ export const TopSlide: React.FC<TopSlideProps> = ({
                         ⭐ {m.ratingAvg ? m.ratingAvg.toFixed(1) : "N/A"}
                       </span>
                       <span className="px-2 py-1 bg-white/20 rounded">
-                        👁 {m.views.toLocaleString()}
+                        👁 {m.views ? m.views.toLocaleString() : "N/A"}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-2 text-sm text-gray-200 mb-4">

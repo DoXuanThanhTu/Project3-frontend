@@ -3,8 +3,8 @@ import { JSX, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import axios from "axios";
 import { IMovie } from "@/types/movie.type";
-import MovieInfo from "@/components/movie/MovieInfo";
-import MovieMain from "@/components/movie/MovieMain";
+// import MovieInfo from "@/components/movie/MovieInfo";
+// import MovieMain from "@/components/movie/MovieMain";
 
 const API_URL = process.env.NEXT_PUBLIC_MOVIE_API_URL;
 
@@ -73,12 +73,12 @@ const MovieDetail = (): JSX.Element => {
       <div className="flex flex-col md:flex-row w-full p-5 md:pr-20 xl:pr-40 md:pl-20 xl:pl-40 gap-8">
         {/* Movie Info */}
         <div className="max-w-[400px] w-full shrink-0">
-          <MovieInfo movie={movie} />
+          {/* <MovieInfo movie={movie} /> */}
         </div>
 
         {/* MovieMain */}
         <div className="flex-1 w-full">
-          <MovieMain data={allData!} />
+          {/* <MovieMain data={allData!} /> */}
         </div>
       </div>
 

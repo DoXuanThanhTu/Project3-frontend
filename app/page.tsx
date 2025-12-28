@@ -8,7 +8,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import MovieSlider from "@/components/movie/MovieSlider";
 import CommentSection from "@/components/movie/CommentSection";
 import { TopSlide } from "@/components/movie/TopSlide";
-import mockMovies from "@/mock/movie";
+// import mockMovies from "@/mock/movie";
 import axios from "axios";
 import { IMovie } from "@/types/movie.type";
 const MOVIE_API_URL = process.env.NEXT_PUBLIC_MOVIE_API_URL;
@@ -72,7 +72,7 @@ export default function HomePage() {
       {loading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
-        <TopSlide movies={hasMovies ? movies : mockMovies} />
+        <TopSlide movies={hasMovies ? movies : []} />
       )}
 
       <div className="max-w-6xl mx-auto p-4 mt-16">
