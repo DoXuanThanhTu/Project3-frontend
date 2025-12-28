@@ -1,26 +1,109 @@
 @import "tailwindcss";
 
+/* =========================
+   DEFAULT THEME: WHITE
+   ========================= */
+html {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--text));
+}
+
+html.theme-white {
+  /* nền và text */
+  --bg: 255 255 255;
+  --bg-secondary: 244 244 245;
+  --card: 250 250 250;
+  --border: 228 228 231;
+  --text: 24 24 27;
+  --text-muted: 113 113 122;
+
+  /* màu chính */
+  --primary: 249 115 22;   /* orange-500 */
+  --primary-hover: 234 88 12;
+
+  /* header/footer/accent */
+  --header: 255 255 255;
+  --footer: 244 244 245;
+  --accent: 59 130 246;    /* blue-500 */
+
+  /* overlay & shadow */
+  --overlay: 0 0 0 / 0.6;
+  --shadow: 0 0 0;
+
+  /* trạng thái */
+  --rating: 250 204 21;    /* yellow-400 */
+  --success: 34 197 94;    /* green-500 */
+  --error: 239 68 68;      /* red-500 */
+  --warning: 245 158 11;   /* amber-500 */
+  --info: 56 189 248;      /* sky-400 */
+
+  /* UI components */
+  --button-bg: 249 115 22;
+  --button-text: 255 255 255;
+  --nav-bg: 255 255 255;
+  --nav-hover: 244 244 245;
+  --highlight: 59 130 246;
+  --scrollbar: 113 113 122;
+  --input-bg: 250 250 250;
+  --input-border: 228 228 231;
+}
+
+/* =========================
+   DARK THEME
+   ========================= */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* nền và text */
+  --bg: 9 9 11;
+  --bg-secondary: 24 24 27;
+  --card: 24 24 27;
+  --border: 39 39 42;
+  --text: 244 244 245;
+  --text-muted: 161 161 170;
+
+  /* màu chính */
+  --primary: 249 115 22;
+  --primary-hover: 234 88 12;
+
+  /* header/footer/accent */
+  --header: 24 24 27;
+  --footer: 9 9 11;
+  --accent: 147 197 253;   /* blue-300 */
+
+  /* overlay & shadow */
+  --overlay: 0 0 0 / 0.7;
+  --shadow: 0 0 0;
+
+  /* trạng thái */
+  --rating: 253 224 71;    /* yellow-300 */
+  --success: 74 222 128;   /* green-400 */
+  --error: 248 113 113;    /* red-400 */
+  --warning: 251 191 36;   /* amber-400 */
+  --info: 125 211 252;     /* sky-300 */
+
+  /* UI components */
+  --button-bg: 234 88 12;
+  --button-text: 255 255 255;
+  --nav-bg: 24 24 27;
+  --nav-hover: 39 39 42;
+  --highlight: 147 197 253;
+  --scrollbar: 82 82 91;
+  --input-bg: 39 39 42;
+  --input-border: 63 63 70;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* =========================
+   ORANGE THEME
+   ========================= */
+html.theme-orange {
+  --bg: 255 247 237;
+  --bg-secondary: 255 237 213;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+  --card: 255 255 255;
+  --border: 253 186 116;
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  --text: 124 45 18;
+  --text-muted: 154 52 18;
+
+  --primary: 234 88 12;
+  --primary-hover: 194 65 12;
 }

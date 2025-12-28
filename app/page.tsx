@@ -1,65 +1,127 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useEffect, useState } from "react";
+import { useAppStore } from "@/store/app.store";
+import { useI18n } from "@/hooks/useI18n";
+import Link from "next/link";
+import Skeleton from "@/components/ui/Skeleton";
+import MovieSlider from "@/components/movie/MovieSlider";
+import CommentSection from "@/components/movie/CommentSection";
+import { TopSlide } from "@/components/movie/TopSlide";
+import mockMovies from "@/mock/movie";
+import axios from "axios";
+import { IMovie } from "@/types/movie.type";
+const MOVIE_API_URL = process.env.NEXT_PUBLIC_MOVIE_API_URL;
+
+export default function HomePage() {
+  const t = useI18n();
+  const { theme } = useAppStore();
+  const [loading, setLoading] = useState(true);
+  const [movies, setMovies] = useState<IMovie[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await axios.get(`${MOVIE_API_URL}`);
+        console.log("Phản hồi từ API:", res.data.data);
+        // console.log("Dữ liệu phim đã lấy:", fetchedMovies);
+        // ✅ Đảm bảo movies luôn là array
+        setMovies(Array.isArray(res.data.data) ? res.data.data : []);
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu:", error);
+        setError("Không thể tải danh sách phim");
+        setMovies([]); // Đảm bảo không bị undefined
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const renderMovieSkeleton = () =>
+    Array.from({ length: 8 }).map((_, idx) => (
+      <div
+        key={idx}
+        className="cursor-pointer transition-transform hover:scale-105"
+      >
+        <Skeleton className="w-full aspect-2/3 rounded-lg" />
+        <Skeleton className="mt-2 h-4 w-3/4 mx-auto rounded" />
+      </div>
+    ));
+
+  // ✅ Kiểm tra xem có dữ liệu phim không
+  const hasMovies = movies && movies.length > 0;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div
+      className={`transition-colors duration-300 -mt-16
+        ${
+          theme === "dark"
+            ? "bg-gray-900 text-white"
+            : theme === "orange"
+            ? "bg-orange-50 text-orange-900"
+            : "bg-white text-gray-900"
+        }`}
+    >
+      {/* Banner TopSlide */}
+      {loading ? (
+        <Skeleton className="h-64 w-full" />
+      ) : (
+        <TopSlide movies={hasMovies ? movies : mockMovies} />
+      )}
+
+      <div className="max-w-6xl mx-auto p-4 mt-16">
+        {/* Grid phim */}
+        <h1 className="text-3xl font-bold mb-6">
+          {t("movie_list") || "Danh sách phim"}
+        </h1>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+        {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          {loading ? (
+            renderMovieSkeleton()
+          ) : hasMovies ? (
+            movies.map((movie, i) => (
+              <Link key={`movie ${i}`} href={`/movie/${movie._id}`}>
+                <div className="cursor-pointer transition-transform hover:scale-105">
+                  <div className="bg-black aspect-2/3 overflow-hidden rounded-lg">
+                    <img
+                      src={movie.thumbnail || "/no_thumb.png"}
+                      alt={movie.title || "No alt"}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                  <h2 className="mt-2 font-semibold text-center">
+                    {movie.title || "Không có tiêu đề"}
+                  </h2>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="col-span-4 text-center py-8">Không có phim nào</div>
+          )}
+        </div> */}
+        {/* Slider phim nổi bật - chỉ hiển thị khi có phim */}
+        {!loading && hasMovies && (
+          <MovieSlider
+            title={t("featured_movies") || "Phim nổi bật"}
+            movies={movies.slice(0, 10)}
+          />
+        )}
+        {/* New Movies */}
+        <MovieSlider title="New Movies" movies={movies.slice(0, 10)} />
+        {/* Comment Section */}
+        <CommentSection />
+      </div>
     </div>
   );
 }
