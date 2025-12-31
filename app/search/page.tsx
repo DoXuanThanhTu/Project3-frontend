@@ -20,10 +20,11 @@ import MovieCard from "@/components/movie/MovieCard";
 import Pagination from "@/components/common/Pagination";
 import FilterSidebar from "@/components/common/FilterSidebar";
 import axios from "axios";
-import { IMovie } from "@/types/movie.type";
+import { IMovieResponse } from "@/types/response.type";
 
 interface SearchResponse {
   success: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any[];
   searchInfo?: {
     keyword: string;
@@ -86,7 +87,7 @@ export default function SearchPage() {
   const query = searchParams.get("q") || "";
 
   const [searchInput, setSearchInput] = useState(query);
-  const [movies, setMovies] = useState<IMovie[]>([]);
+  const [movies, setMovies] = useState<IMovieResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -208,7 +209,8 @@ export default function SearchPage() {
         if (data.success) {
           // Đảm bảo suggestions là mảng string
           const suggestionsData = Array.isArray(data.data)
-            ? data.data.map((item: any) => {
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              data.data.map((item: any) => {
                 if (typeof item === "string") return item;
                 if (typeof item === "object" && item.title) return item.title;
                 return String(item);
@@ -298,7 +300,7 @@ export default function SearchPage() {
   // Hiển thị error
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white pt-20">
+      <div className="min-h-screen bg-linear-to-b from-gray-900 to-black text-white pt-20">
         <div className="max-w-7xl mx-auto px-4 py-8 text-center">
           <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-8 max-w-md mx-auto">
             <h2 className="text-xl font-bold text-red-400 mb-4">Lỗi</h2>
@@ -319,7 +321,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white pt-20">
+    <div className="min-h-screen bg-linear-gradient-to-b from-gray-900 to-black text-white pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Header */}
         <div className="mb-8">
@@ -352,7 +354,7 @@ export default function SearchPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="absolute right-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="absolute right-2 bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 py-2.5 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Đang tìm..." : "Tìm kiếm"}
               </button>
@@ -427,7 +429,7 @@ export default function SearchPage() {
                       applyFilters({
                         ...activeFilters,
                         sortOrder:
-                          activeFilters.sortOrder === "desc" ? "asc" : "desc",
+                          activeFilters.sortOrder === "asc" ? "asc" : "desc",
                       })
                     }
                     className="bg-gray-800 border border-gray-700 rounded-lg p-1.5 hover:bg-gray-700 transition-colors"
@@ -464,7 +466,7 @@ export default function SearchPage() {
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {movies.map((movie) => (
-                    <MovieCard key={movie.id || movie.id} movie={movie} />
+                    <MovieCard key={movie.id} movie={movie} />
                   ))}
                 </div>
 
@@ -491,7 +493,7 @@ export default function SearchPage() {
                   Không tìm thấy kết quả
                 </h3>
                 <p className="text-gray-400 mb-6">
-                  Không có phim nào phù hợp với từ khóa "{query}"
+                  Không có phim nào phù hợp với từ khóa &quot;{query}&quot;
                 </p>
                 <div className="space-y-4 max-w-md mx-auto">
                   <p className="text-sm text-gray-500">Gợi ý:</p>
@@ -503,7 +505,7 @@ export default function SearchPage() {
                   </ul>
                   <button
                     onClick={() => router.push("/phim-hot")}
-                    className="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
+                    className="mt-4 inline-flex items-center gap-2 bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
                   >
                     <Play className="w-4 h-4" />
                     Xem phim đang hot
@@ -515,7 +517,7 @@ export default function SearchPage() {
             {/* Empty State (No Search Yet) */}
             {!isLoading && !query && movies.length === 0 && (
               <div className="text-center py-20">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-24 h-24 mx-auto mb-6 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                   <Film className="w-12 h-12 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-3">

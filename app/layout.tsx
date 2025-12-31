@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import AppProvider from "@/providers/AppProvider";
 import { cookies } from "next/headers";
 import Navbar from "@/components/layout/Navbar";
+import { StoreProvider } from "@/providers/StoreProvider";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -23,7 +24,7 @@ export default async function RootLayout({
 
   const cookieTheme =
     (themeCookie?.value as "white" | "dark" | "orange") ?? "dark";
-  const cookieLang = (langCookie?.value as "vi" | "en") ?? "vi";
+  const cookieLang = (langCookie?.value as "vi" | "en") ?? "en";
 
   return (
     <html
@@ -34,8 +35,10 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
         <AppProvider initialTheme={cookieTheme} initialLang={cookieLang}>
-          <Navbar />
-          <main className="grow mt-16">{children}</main>
+          {/* <Navbar /> */}
+          <StoreProvider>
+            <div className="grow">{children}</div>
+          </StoreProvider>
         </AppProvider>
       </body>
     </html>

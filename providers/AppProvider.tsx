@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import { useAppStore } from "@/store/app.store";
+import { useAppStore } from "@/stores/app.store";
 import i18n from "@/i18n/messages";
 
 interface AppProviderProps {

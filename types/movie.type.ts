@@ -19,38 +19,84 @@ export enum FlagType {
   PROMOTION = "PROMOTION", // quảng cáo/khuyến mãi
   HIGHLIGHT = "HIGHLIGHT", // spotlight/nổi bật
 }
+
 export interface IMovie {
-  id: string;
+  _id: string;
+
+  // ===== I18N =====
+  franchise?: {
+    id: string;
+    name: string;
+    slug?: string;
+  } | null;
   franchiseId?: string;
+  title: Record<string, string>; // Map<string, string> in MongoDB
+  description?: Record<string, string>;
+  slug: Record<string, string>;
 
-  title?: string;
-  description?: string;
-  slug?: string;
-  defaultLang?: string;
+  // ===== META =====
+  defaultLang: string;
 
+  // ===== MEDIA =====
   poster?: string;
   thumbnail?: string;
   banner?: string;
   backdrop?: string;
   trailerUrl?: string;
 
-  type?: MovieType;
-
+  type: MovieType;
   currentEpisode?: number;
   totalEpisodes?: number;
-  seasonOrLabel?: string;
-  duration?: string;
-  genres?: string[];
-  cast?: string[];
-  director?: string;
+
+  // ===== RELATION =====
+  genres: string[]; // Array of ObjectId strings
+  cast: string[]; // Array of ObjectId strings
+  director?: string; // ObjectId string
+
+  // ===== STAT =====
+  ratingAvg: number;
+  views: number;
+  year?: number;
   country?: string;
-  ratingAvg?: number;
-  views?: number;
-  flag?: FlagType[];
-  relasedYear?: number;
-  isPublished?: boolean;
+  isPublished: boolean;
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
 }
 
+// Extended interface with populated relations
+// export interface IMovieWithRelations
+//   extends Omit<IMovie, "genres" | "cast" | "director" | "franchiseId"> {
+//   genres: IGenre[];
+//   cast: IPerson[];
+//   director?: IPerson;
+//   franchise?: IFranchise;
+// }
+
+// Additional interfaces for relations
+// export interface IGenre {
+//   _id: string;
+//   name: Record<string, string>;
+//   slug: Record<string, string>;
+//   description?: Record<string, string>;
+//   isActive: boolean;
+// }
+
+export interface IPerson {
+  _id: string;
+  name: Record<string, string>;
+  slug: Record<string, string>;
+  avatar?: string;
+  roles: ("ACTOR" | "DIRECTOR")[];
+}
+
+// export interface IFranchise {
+//   _id: string;
+//   name: Record<string, string>;
+//   slug: Record<string, string>;
+//   movies: string[];
+// }
 export interface IEpisode {
   _id: string;
   movieId: string;
@@ -69,7 +115,7 @@ export interface IEpisode {
 }
 
 export interface IServer {
-  _id: string;
+  id: string;
   name: string;
   baseUrl: string;
   isActive: boolean;

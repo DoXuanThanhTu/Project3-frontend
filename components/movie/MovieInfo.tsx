@@ -1,117 +1,114 @@
-// "use client";
+"use client";
 
-// import React from "react";
-// import Image from "next/image";
-// import { IMovie, MovieType } from "@/types/movie.type";
-// import { getMovieText } from "@/lib/movie-i18n";
-// import { useAppStore } from "@/store";
+import React from "react";
+import Image from "next/image";
+import { IMovieResponse } from "@/types/response.type";
+import { MovieType } from "@/types/movie.type";
 
-// const MovieInfo = ({ movie }: { movie?: IMovie }) => {
-//   const lang = useAppStore((s) => s.lang);
+interface MovieInfoProps {
+  movie: IMovieResponse;
+}
 
-//   if (!movie) return null;
+const MovieInfo: React.FC<MovieInfoProps> = ({ movie }) => {
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1)}M`;
+    }
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K`;
+    }
+    return num.toString();
+  };
 
-//   const title = getMovieText(movie.title, lang, movie.defaultLang);
+  return (
+    <div className="flex flex-col space-y-6">
+      {/* Poster */}
+      <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl shadow-2xl">
+        <img
+          src={movie.thumbnail ?? "/no_thumb.png"}
+          alt={movie.title || "No title"}
+          className="object-cover w-full h-full"
+        />
+        {/* Rating Badge */}
+        <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-black/80 px-3 py-1.5 text-sm font-bold">
+          <span className="text-yellow-400">★</span>
+          <span>{movie.ratingAvg ? movie.ratingAvg.toFixed(1) : "N/A"}</span>
+        </div>
+      </div>
 
-//   const description = getMovieText(movie.description, lang, movie.defaultLang);
+      {/* Movie Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="flex flex-col items-center rounded-lg bg-gray-900/50 p-3">
+          <span className="text-2xl font-bold text-yellow-400">
+            {movie.ratingAvg ? movie.ratingAvg.toFixed(1) : "N/A"}{" "}
+          </span>
+          <span className="text-xs text-gray-400">Đánh giá</span>
+        </div>
+        <div className="flex flex-col items-center rounded-lg bg-gray-900/50 p-3">
+          <span className="text-2xl font-bold text-blue-400">
+            {formatNumber(movie.views || 0)}
+          </span>
+          <span className="text-xs text-gray-400">Lượt xem</span>
+        </div>
+        <div className="flex flex-col items-center rounded-lg bg-gray-900/50 p-3">
+          <span className="text-2xl font-bold text-purple-400">
+            {movie.type === MovieType.SERIES
+              ? movie.totalEpisodes ?? "??"
+              : "Lẻ"}
+          </span>
+          <span className="text-xs text-gray-400">
+            {movie.type === MovieType.SERIES ? "Tập" : ""}
+          </span>
+        </div>
+      </div>
 
-//   return (
-//     <div className="mx-auto grid grid-cols-1 md:grid-cols-[220px_1fr] gap-8">
-//       {/* ===== POSTER ===== */}
-//       <div className="flex justify-center md:justify-start">
-//         <div className="relative w-[200px] h-[300px] rounded-xl overflow-hidden shadow-lg">
-//           <Image
-//             src={movie.poster || movie.thumbnail || "/no_poster.png"}
-//             alt={title}
-//             fill
-//             className="object-cover"
-//           />
-//         </div>
-//       </div>
+      {/* Genres */}
+      {movie.genres && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-gray-400">Thể loại</h3>
+          <div className="flex flex-wrap gap-2">
+            {movie.genres.map((genre) => (
+              <span
+                key={genre.id}
+                className="rounded-full bg-linear-to-r from-purple-900/30 to-pink-900/30 px-3 py-1 text-xs text-purple-300 backdrop-blur-sm"
+              >
+                {genre.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
-//       {/* ===== INFO ===== */}
-//       <div className="flex flex-col">
-//         {/* Title */}
-//         <h1 className="text-3xl font-bold">{title}</h1>
+      {/* Franchise */}
+      {movie.franchise && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-gray-400">Series</h3>
+          <div className="rounded-lg bg-linear-to-r from-gray-900/50 to-gray-800/50 p-3 backdrop-blur-sm">
+            <span className="text-white">{movie.franchise.name}</span>
+          </div>
+        </div>
+      )}
 
-//         {/* Sub title (English fallback) */}
-//         {movie.defaultLang !== "en" && movie.title.get("en") && (
-//           <p className="text-lg text-purple-400 italic">
-//             {movie.title.get("en")}
-//           </p>
-//         )}
+      {/* Quick Info */}
+      <div className="space-y-3 rounded-xl bg-linear-to-br from-gray-900/50 to-black/50 p-4 backdrop-blur-sm">
+        <h3 className="text-sm font-semibold text-gray-400">Thông tin nhanh</h3>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-400">Loại phim:</span>
+            <span className="font-medium text-white">
+              {movie.type === "SERIES" ? "Phim bộ" : "Phim lẻ"}
+            </span>
+          </div>
+          {movie.duration && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">Thời lượng:</span>
+              <span className="font-medium text-white">{movie.duration}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
-//         {/* Meta */}
-//         <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
-//           <span className="bg-yellow-600 px-2 py-1 rounded">{movie.type}</span>
-
-//           {movie.type === MovieType.SERIES && (
-//             <span className="bg-neutral-800 px-2 py-1 rounded">
-//               {movie.currentEpisode}/{movie.totalEpisodes} tập
-//             </span>
-//           )}
-
-//           {movie.duration && (
-//             <span className="bg-neutral-800 px-2 py-1 rounded">
-//               {movie.duration}
-//             </span>
-//           )}
-
-//           <span className="bg-neutral-800 px-2 py-1 rounded">
-//             ⭐ {movie.ratingAvg.toFixed(1)}
-//           </span>
-
-//           <span className="bg-neutral-800 px-2 py-1 rounded">
-//             👁 {movie.views.toLocaleString()}
-//           </span>
-//         </div>
-
-//         {/* Genres */}
-//         {movie.genres?.length && (
-//           <div className="flex flex-wrap gap-2 mt-4">
-//             {movie.genres.map((g) => (
-//               <span
-//                 key={g}
-//                 className="bg-purple-600/20 border border-purple-600 text-purple-300 px-3 py-1 rounded-full text-sm"
-//               >
-//                 {g}
-//               </span>
-//             ))}
-//           </div>
-//         )}
-
-//         {/* Description */}
-//         <div className="mt-6">
-//           <h2 className="text-xl font-semibold mb-2">Giới thiệu</h2>
-//           <p className="text-gray-300 leading-relaxed text-sm">{description}</p>
-//         </div>
-
-//         {/* Details */}
-//         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-300">
-//           {movie.director && (
-//             <div>
-//               <p className="font-semibold text-white">Đạo diễn</p>
-//               <p>{movie.director}</p>
-//             </div>
-//           )}
-
-//           {movie.cast?.length && (
-//             <div>
-//               <p className="font-semibold text-white">Diễn viên</p>
-//               <p>{movie.cast.slice(0, 5).join(", ")}</p>
-//             </div>
-//           )}
-
-//           {movie.genres?.length && (
-//             <div>
-//               <p className="font-semibold text-white">Thể loại</p>
-//               <p>{movie.genres.join(", ")}</p>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default MovieInfo;
+export default MovieInfo;

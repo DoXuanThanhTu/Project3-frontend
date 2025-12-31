@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 // import MovieCard from "@/components/movie/MovieCard";
 import { IMovie } from "@/types/movie.type";
+import { IMovieResponse } from "@/types/response.type";
 
 // Mock data cho người dùng
 const mockUserData = {
@@ -81,7 +82,7 @@ const mockUserData = {
 // Mock data cho lịch sử xem
 const mockWatchHistory: Array<{
   id: string;
-  movie: IMovie;
+  movie: IMovieResponse;
   watchedAt: string;
   progress: number; // 0-100
   duration: number; // phút
@@ -93,7 +94,13 @@ const mockWatchHistory: Array<{
       title: "Inception",
       thumbnail:
         "https://images.unsplash.com/photo-1534447677768-be436bb09401?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      genres: ["Khoa học viễn tưởng", "Hành động"],
+      genres: [
+        {
+          id: "1",
+          name: "Hành động",
+          slug: "hanh-dong",
+        },
+      ],
       ratingAvg: 8.8,
       duration: "148",
     },
@@ -101,88 +108,22 @@ const mockWatchHistory: Array<{
     progress: 100,
     duration: 148,
   },
-  {
-    id: "hist_002",
-    movie: {
-      id: "movie_002",
-      title: "Interstellar",
-      thumbnail:
-        "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      genres: ["Khoa học viễn tưởng", "Phiêu lưu"],
-      ratingAvg: 8.6,
-      duration: "169",
-    },
-    watchedAt: "2024-01-14 19:15",
-    progress: 75,
-    duration: 169,
-  },
-  {
-    id: "hist_003",
-    movie: {
-      id: "movie_003",
-      title: "The Dark Knight",
-      thumbnail:
-        "https://images.unsplash.com/photo-1635805737707-575885ab0820?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      genres: ["Hành động", "Tội phạm"],
-      ratingAvg: 9.0,
-      duration: "152",
-    },
-    watchedAt: "2024-01-13 21:00",
-    progress: 100,
-    duration: 152,
-  },
-  {
-    id: "hist_004",
-    movie: {
-      id: "movie_004",
-      title: "Parasite",
-      thumbnail:
-        "https://images.unsplash.com/photo-1595769812725-4c6564f70466?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      genres: ["Tâm lý", "Kinh dị"],
-      ratingAvg: 8.6,
-      duration: "132",
-    },
-    watchedAt: "2024-01-12 18:45",
-    progress: 100,
-    duration: 132,
-  },
 ];
 
 // Mock data cho phim yêu thích
-const mockFavoriteMovies: IMovie[] = [
+const mockFavoriteMovies: IMovieResponse[] = [
   {
     id: "fav_001",
     title: "Avatar: The Way of Water",
     thumbnail:
       "https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    genres: ["Khoa học viễn tưởng", "Phiêu lưu"],
-    ratingAvg: 7.9,
-    relasedYear: 2022,
-  },
-  {
-    id: "fav_002",
-    title: "Spider-Man: No Way Home",
-    thumbnail:
-      "https://images.unsplash.com/photo-1635805737707-575885ab0820?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60",
-    genres: ["Hành động", "Phiêu lưu"],
-    ratingAvg: 8.3,
-    relasedYear: 2021,
-  },
-  {
-    id: "fav_003",
-    title: "Dune",
-    thumbnail:
-      "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    genres: ["Khoa học viễn tưởng", "Phiêu lưu"],
-    ratingAvg: 8.0,
-    relasedYear: 2021,
-  },
-  {
-    id: "fav_004",
-    title: "Everything Everywhere All at Once",
-    thumbnail:
-      "https://images.unsplash.com/photo-1574267432553-4b4628081c31?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    genres: ["Hành động", "Hài", "Khoa học viễn tưởng"],
+    genres: [
+      {
+        id: "1",
+        name: "Hành động",
+        slug: "hanh-dong",
+      },
+    ],
     ratingAvg: 7.9,
     relasedYear: 2022,
   },

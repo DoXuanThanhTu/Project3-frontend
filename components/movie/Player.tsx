@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, startTransition } from "react";
 import Hls from "hls.js";
 import {
   Play,
@@ -29,10 +29,7 @@ function usePlaybackMemory(videoRef: React.RefObject<HTMLVideoElement | null>) {
     if (!video) return;
 
     if (wasPlayingRef.current) {
-      try {
-        const p = video.play();
-        if (p && typeof (p as any).catch === "function") p.catch(() => {});
-      } catch {}
+      video.play()?.catch(() => {});
     } else {
       video.pause();
     }
@@ -50,6 +47,7 @@ interface PlayerProps {
     accent?: string; // Màu nhấn (volume slider)
     controlsBg?: string; // Màu nền controls
   };
+  onEnded?: () => void; // Thêm prop onEnded
 }
 
 // ✅ Màu mặc định
@@ -60,13 +58,17 @@ const defaultColors = {
   controlsBg: "bg-gradient-to-t from-black/90 via-black/60 to-transparent",
 };
 
-export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
+export default function Player({
+  linkEmbed,
+  colors = {},
+  onEnded,
+}: PlayerProps) {
   // ✅ Merge màu custom với màu mặc định
   const playerColors = {
     ...defaultColors,
     ...colors,
   };
-
+  const prevVolumeRef = useRef<number>(100);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -119,6 +121,7 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
       const onEvent = (ev: Event) => {
         if (done) return;
         done = true;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         el.removeEventListener(eventName, onEvent as any);
         clearTimeout(timer);
         resolve(ev);
@@ -126,9 +129,11 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
       const timer = setTimeout(() => {
         if (done) return;
         done = true;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         el.removeEventListener(eventName, onEvent as any);
         resolve(null);
       }, timeout);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       el.addEventListener(eventName, onEvent as any);
     });
 
@@ -145,9 +150,11 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
     const tryFlush = () => {
       if (!hls) return;
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bufferController = (hls as any).bufferController;
         const sourceBufferMap = bufferController?.sourceBuffer;
         if (sourceBufferMap) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           Object.values(sourceBufferMap).forEach((sb: any) => {
             try {
               if (sb?.buffered?.length) {
@@ -182,7 +189,9 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
         video.currentTime = targetTime;
         if (!isSeekingRef.current) setIsPlaying(true);
         const p = video.play();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (p && typeof (p as any).catch === "function")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (p as any).catch(() => {});
       } catch {}
 
@@ -231,27 +240,36 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
     if (!video) return;
 
     const syncPlayState = () => setIsPlaying(!video.paused);
+    const handleEnded = () => {
+      if (onEnded) {
+        onEnded();
+      }
+    };
 
     video.addEventListener("play", syncPlayState);
     video.addEventListener("pause", syncPlayState);
+    video.addEventListener("ended", handleEnded);
 
     return () => {
       video.removeEventListener("play", syncPlayState);
       video.removeEventListener("pause", syncPlayState);
+      video.removeEventListener("ended", handleEnded);
     };
-  }, []);
+  }, [onEnded]);
 
   // ✅ setup HLS khi đổi link
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    setIsPlaying(false);
-    setIsLoading(true);
-    setProgress(0);
-    setBuffered(0);
-    setCurrentTime(0);
-    setDuration(0);
+    startTransition(() => {
+      setIsPlaying(false);
+      setIsLoading(true);
+      setProgress(0);
+      setBuffered(0);
+      setCurrentTime(0);
+      setDuration(0);
+    });
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -275,6 +293,7 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
 
     hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
       const availableQualities = data.levels
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((l: any) => l.height)
         .filter(Boolean)
         .sort((a: number, b: number) => a - b);
@@ -366,8 +385,24 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
-    video.muted = !video.muted;
-    setIsMuted(video.muted);
+
+    // Đang mute → khôi phục volume trước đó
+    if (video.muted || video.volume === 0) {
+      video.muted = false;
+      video.volume = prevVolumeRef.current;
+
+      setVolume(prevVolumeRef.current);
+      setIsMuted(false);
+      return;
+    }
+
+    // Chưa mute → lưu volume hiện tại rồi giảm về 0
+    prevVolumeRef.current = video.volume;
+    video.volume = 0;
+    video.muted = true;
+
+    setVolume(0);
+    setIsMuted(true);
   };
 
   // ✅ Volume change
@@ -471,7 +506,7 @@ export default function Player({ linkEmbed, colors = {} }: PlayerProps) {
 
   return (
     <div
-      className={`relative w-full aspect-video bg-black rounded-xl overflow-hidden ${
+      className={`relative w-full aspect-video bg-black overflow-hidden ${
         showControls ? "cursor-auto" : "cursor-none"
       }`}
       onMouseMove={handleMouseMove}

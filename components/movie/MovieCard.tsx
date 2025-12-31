@@ -1,23 +1,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Play, Star, Eye, Calendar, Clock } from "lucide-react";
-import { IMovie } from "@/types/movie.type";
+import { IMovieResponse } from "@/types/response.type";
 
-export default function MovieCard({ movie }: { movie: IMovie }) {
+export default function MovieCard({ movie }: { movie: IMovieResponse }) {
   // Kiểm tra và bảo vệ dữ liệu
   if (!movie || typeof movie !== "object") {
     return null;
   }
 
   const {
-    id,
+    // id,
     title,
     slug,
     thumbnail,
     // year,
     // rating,
     views,
-    duration,
+    // duration,
     type,
     genres = [],
   } = movie;
@@ -34,7 +34,7 @@ export default function MovieCard({ movie }: { movie: IMovie }) {
   return (
     <Link href={`/phim/${safeSlug}`} className="block">
       <div className="group cursor-pointer">
-        <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 mb-3">
+        <div className="relative aspect-2/3 rounded-lg overflow-hidden bg-gray-800 mb-3">
           {safeThumbnail ? (
             <img
               src={safeThumbnail}
@@ -48,13 +48,13 @@ export default function MovieCard({ movie }: { movie: IMovie }) {
               // }}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-800 to-gray-900">
               <Play className="w-12 h-12 text-gray-600" />
             </div>
           )}
 
           {/* Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
           {/* Badges */}
           {/* <div className="absolute top-2 left-2 flex gap-1">
@@ -78,7 +78,7 @@ export default function MovieCard({ movie }: { movie: IMovie }) {
         </div>
 
         <div className="space-y-1">
-          <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors line-clamp-1">
+          <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors line-clamp-2">
             {safeTitle || "Không có tiêu đề"}
           </h3>
 
@@ -112,7 +112,7 @@ export default function MovieCard({ movie }: { movie: IMovie }) {
                     key={index}
                     className="text-xs px-2 py-0.5 bg-gray-800 rounded-full text-gray-300"
                   >
-                    {genre}
+                    {genre.name}
                   </span>
                 );
               })}

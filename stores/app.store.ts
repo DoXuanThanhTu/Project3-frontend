@@ -14,8 +14,8 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      theme: "dark",
-      lang: "vi",
+      theme: "dark" as Theme,
+      lang: "en" as Lang,
       setTheme: (theme) => set({ theme }),
       setLang: (lang) => set({ lang }),
     }),

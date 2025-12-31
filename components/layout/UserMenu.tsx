@@ -1,42 +1,36 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { User, LogOut, Settings, Heart, Clock } from "lucide-react";
+import {
+  User,
+  LogOut,
+  Settings,
+  Heart,
+  Clock,
+  ChevronDown,
+} from "lucide-react";
 import Link from "next/link";
-import { jwtDecode } from "jwt-decode";
-import Image from "next/image";
+import useAuthStore from "@/stores/auth.store";
 
-interface DecodedToken {
-  id: string;
-  username: string;
-  avatar?: string;
-  exp?: number;
+interface UserMenuProps {
+  onLogout?: () => void;
 }
 
-export default function UserMenu() {
-  const [user, setUser] = useState<DecodedToken | null>(null);
+export default function UserMenu({ onLogout }: UserMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Lấy token từ cookie
-  const getTokenFromCookie = () => {
-    const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
-    return match ? match[1] : null;
-  };
+  // Lấy state và action từ store
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const logout = useAuthStore((state) => state.logout);
+  const getCurrentUser = useAuthStore((state) => state.getCurrentUser);
 
+  // Khi mount, gọi API lấy user hiện tại
   useEffect(() => {
-    const token = getTokenFromCookie();
-    if (token) {
-      try {
-        const decoded: DecodedToken = jwtDecode(token);
-        setTimeout(() => setUser(decoded), 0);
-      } catch (err) {
-        console.error("Token không hợp lệ", err);
-        setTimeout(() => setUser(null), 0);
-      }
-    }
-  }, []);
+    getCurrentUser();
+  }, [getCurrentUser]);
 
   // Đóng menu khi click ra ngoài
   useEffect(() => {
@@ -49,10 +43,9 @@ export default function UserMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    setUser(null);
-    window.location.href = "/";
+  const handleLogout = async () => {
+    await logout();
+    if (onLogout) onLogout();
   };
 
   // Hover menu
@@ -68,6 +61,8 @@ export default function UserMenu() {
     setHoverTimeout(timeout);
   };
 
+  const toggleMenu = () => setIsOpen(!isOpen);
+
   return (
     <div
       className="relative"
@@ -76,72 +71,89 @@ export default function UserMenu() {
       onMouseLeave={handleMouseLeave}
     >
       {/* Nút user */}
-      {!user ? (
-        <Link
-          href="/login"
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 transition font-medium"
-        >
-          <User className="w-5 h-5" />
-          <span className="hidden xl:inline">Đăng nhập</span>
-        </Link>
-      ) : (
-        <button
-          type="button"
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 transition font-medium"
-        >
-          {/* <img
+      <button
+        type="button"
+        onClick={toggleMenu}
+        className="flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 transition-all font-medium shadow-lg group"
+      >
+        <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-blue-400/50 group-hover:border-blue-400 transition-colors">
+          <img
             src={user?.avatar?.trim() ? user.avatar : "/default-avatar.png"}
             alt="avatar"
-            className="w-8 h-8 rounded-full border border-gray-300 object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "/default-avatar.png";
-            }}
-          /> */}
-          <Image
-            src={user?.avatar?.trim() ? user.avatar : "/default-avatar.png"}
-            alt="avatar"
-            className="w-8 h-8 rounded-full border border-gray-300 object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "/default-avatar.png";
-            }}
-            width={32}
-            height={32}
+            className="w-full h-full object-cover"
           />
-          <span className="hidden xl:inline">
-            {user?.username || "Người dùng"}
-          </span>
-        </button>
-      )}
+        </div>
+        <span className="hidden xl:inline max-w-30 truncate">
+          {user?.displayName || "Người dùng"}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 transition-transform ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
 
       {/* Popup menu */}
-      {user && isOpen && (
-        <div
-          className="absolute right-0 top-full w-56 bg-gray-800 border border-gray-700 
-          rounded-xl shadow-lg py-2 text-sm animate-fadeIn z-50"
-        >
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-2 w-56 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-lg py-2 text-sm animate-fadeIn z-50">
+          {/* Thông tin user */}
+          <div className="px-4 py-3 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden">
+                <img
+                  src={
+                    user?.avatar?.trim() ? user.avatar : "/default-avatar.png"
+                  }
+                  alt="avatar"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-white truncate">
+                  {user?.displayName || "Người dùng"}
+                </p>
+                <p className="text-xs text-gray-400 truncate">
+                  ID: {user?.id?.substring(0, 8)}...
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Menu items */}
           <Link
             href="/profile"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 transition"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 transition-colors text-gray-200"
+            onClick={() => setIsOpen(false)}
           >
-            <Settings className="w-4 h-4" /> Chỉnh sửa thông tin
+            <Settings className="w-4 h-4" />
+            <span>Chỉnh sửa thông tin</span>
           </Link>
           <Link
             href="/favorites"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 transition"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 transition-colors text-gray-200"
+            onClick={() => setIsOpen(false)}
           >
-            <Heart className="w-4 h-4" /> Phim yêu thích
+            <Heart className="w-4 h-4" />
+            <span>Phim yêu thích</span>
           </Link>
           <Link
             href="/history"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700 transition"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 transition-colors text-gray-200"
+            onClick={() => setIsOpen(false)}
           >
-            <Clock className="w-4 h-4" /> Phim đã xem
+            <Clock className="w-4 h-4" />
+            <span>Phim đã xem</span>
           </Link>
+
+          {/* Divider */}
+          <div className="my-2 border-t border-gray-700"></div>
+
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-gray-700 transition"
+            className="w-full flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-gray-700/50 transition-colors hover:text-red-300"
           >
-            <LogOut className="w-4 h-4" /> Đăng xuất
+            <LogOut className="w-4 h-4" />
+            <span>Đăng xuất</span>
           </button>
         </div>
       )}

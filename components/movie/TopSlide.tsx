@@ -12,8 +12,9 @@ import Link from "next/link";
 import { IMovie, MovieType } from "@/types/movie.type";
 import Image from "next/image";
 import type { Swiper as SwiperType } from "swiper";
+import { IMovieResponse } from "@/types/res.type";
 type TopSlideProps = {
-  movies: IMovie[];
+  movies: IMovieResponse[];
   autoPlay?: boolean;
   length?: number;
 };
@@ -104,11 +105,11 @@ export const TopSlide: React.FC<TopSlideProps> = ({
                         m.genres.length > 0 &&
                         m.genres.slice(0, 3).map((g) => (
                           <Link
-                            key={g}
-                            href={`/genre/${g}`}
+                            key={g.id}
+                            href={`/genre/${g.name}`}
                             className="px-2 py-1 bg-white/20 rounded hover:bg-white/30 transition"
                           >
-                            {g}
+                            {g.name}
                           </Link>
                         ))}
                     </div>
