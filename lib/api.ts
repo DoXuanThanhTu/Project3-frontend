@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const API_URL =
-  process.env.NODE_ENV === "development"
+  process.env.NEXT_PUBLIC_ENV === "development"
     ? process.env.NEXT_PUBLIC_BACKEND_DEVELOPMENT_API_URL
     : process.env.NEXT_PUBLIC_BACKEND_PRODUCTION_API_URL;
 
