@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import axios from "axios";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Player from "@/components/movie/Player";
 import Link from "next/link";
@@ -14,7 +15,6 @@ import EpisodesByServer from "@/components/movie/EpisodesByServer";
 import { IComment } from "@/types/response.type";
 import PlayerControlBar from "@/components/movie/PlayerController";
 import api from "@/lib/api";
-import CommentList from "@/components/movie/CommentList";
 
 // ===== Types =====
 interface Genre {
@@ -94,41 +94,110 @@ interface MovieData {
   };
 }
 
-// ===== Comment Section =====
-// const CommentSection = ({ movieId }: { movieId: string }) => {
-//   const [comments, setComments] = useState<IComment[]>([]);
-//   const [newComment, setNewComment] = useState("");
-
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!newComment.trim()) return;
-
-//     // Implement comment submission
-//     console.log("Submit comment:", newComment);
-//     setNewComment("");
-//   };
-
-//   return (
-//     <div className="mt-8 p-6 bg-gray-900 rounded-xl">
-//       <h3 className="text-xl font-semibold mb-4">Bình luận</h3>
-//       <form onSubmit={handleSubmit} className="mb-6">
-//         <textarea
-//           value={newComment}
-//           onChange={(e) => setNewComment(e.target.value)}
-//           placeholder="Thêm bình luận của bạn..."
-//           className="w-full p-3 bg-gray-800 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-//           rows={3}
-//         />
-//         <button
-//           type="submit"
-//           className="mt-3 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
-//         >
-//           Gửi bình luận
-//         </button>
-//       </form>
-//     </div>
-//   );
+// ===== Utils =====
+// const getToken = (): string | null => {
+//   if (typeof document === "undefined") return null;
+//   const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+//   return match ? match[1] : null;
 // };
+
+// const buildHistoryPayload = (
+//   movie_id: string,
+//   episode_id?: string,
+//   watch_time = 0,
+//   completion_rate = 0,
+//   drop_off_point = 0
+// ) => ({
+//   movie_id,
+//   episode_id: episode_id || null,
+//   watch_time,
+//   completion_rate,
+//   drop_off_point,
+//   device_type: navigator.userAgent || "",
+//   region: Intl.DateTimeFormat().resolvedOptions().timeZone,
+//   last_watched_at: new Date().toISOString(),
+// });
+
+// // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// const saveLocalHistory = (payload: any) => {
+//   const key = "watch_history";
+//   const list = JSON.parse(localStorage.getItem(key) || "[]");
+//   const exists = list.find(
+//     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+//     (i: any) =>
+//       i.movie_id === payload.movie_id && i.episode_id === payload.episode_id
+//   );
+//   if (!exists) {
+//     list.push(payload);
+//     localStorage.setItem(key, JSON.stringify(list));
+//   }
+// };
+
+// const syncLocalHistory = async (token: string) => {
+//   const key = "watch_history";
+//   const local = JSON.parse(localStorage.getItem(key) || "[]");
+//   if (!local.length) return;
+
+//   try {
+//     await Promise.all(
+//       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+//       local.map((item: any) =>
+//         axios.post(
+//           `${USER_API_URL}/watch-history`,
+//           {
+//             ...item,
+//             last_watched_at: new Date(
+//               item.last_watched_at || new Date()
+//             ).toISOString(),
+//           },
+//           {
+//             headers: { Authorization: `Bearer ${token}` },
+//           }
+//         )
+//       )
+//     );
+//     localStorage.removeItem(key);
+//     console.log("Đồng bộ watch history từ local → server xong");
+//   } catch (err) {
+//     console.error("Sync local history failed", err);
+//   }
+// };
+
+// ===== Comment Section =====
+const CommentSection = ({ movieId }: { movieId: string }) => {
+  const [comments, setComments] = useState<IComment[]>([]);
+  const [newComment, setNewComment] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
+    // Implement comment submission
+    console.log("Submit comment:", newComment);
+    setNewComment("");
+  };
+
+  return (
+    <div className="mt-8 p-6 bg-gray-900 rounded-xl">
+      <h3 className="text-xl font-semibold mb-4">Bình luận</h3>
+      <form onSubmit={handleSubmit} className="mb-6">
+        <textarea
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Thêm bình luận của bạn..."
+          className="w-full p-3 bg-gray-800 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={3}
+        />
+        <button
+          type="submit"
+          className="mt-3 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+        >
+          Gửi bình luận
+        </button>
+      </form>
+    </div>
+  );
+};
 
 // ===== Main Component =====
 export default function WatchPage() {
@@ -137,6 +206,7 @@ export default function WatchPage() {
   const pathname = usePathname();
 
   const movieSlug = useMemo(() => pathname.split("/").pop(), [pathname]);
+  console.log(movieSlug);
   const episodeQuery = searchParams.get("ep");
 
   const [movieData, setMovieData] = useState<MovieData | null>(null);
@@ -145,13 +215,12 @@ export default function WatchPage() {
   const [currentServer, setCurrentServer] = useState<Server | null>(null);
 
   const [isFollowing, setIsFollowing] = useState(false);
-  // const [isAutoPlay, setIsAutoPlay] = useState(() => {
-  //   if (typeof window !== "undefined") {
-  //     return localStorage.getItem("autoPlay") === "true";
-  //   }
-  //   return true;
-  // });
-  const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [isAutoPlay, setIsAutoPlay] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("autoPlay") === "true";
+    }
+    return true;
+  });
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Thêm state để theo dõi trạng thái video
@@ -216,6 +285,64 @@ export default function WatchPage() {
     };
   }, [currentServer, currentEpisode, movieData]);
 
+  // Hàm xử lý chuyển tập
+  // const handlePrevEpisode = () => {
+  //   if (!hasPrevEpisode || !currentServer || !currentEpisode || !movieData)
+  //     return;
+
+  //   const currentServerData = movieData.servers.find(
+  //     (s) => s.server.id === currentServer.server.id
+  //   );
+
+  //   if (!currentServerData) return;
+
+  //   const sortedEpisodes = [...currentServerData.episodes].sort((a, b) => {
+  //     const aNum = parseInt(a.episodeOrLabel);
+  //     const bNum = parseInt(b.episodeOrLabel);
+  //     if (!isNaN(aNum) && !isNaN(bNum)) {
+  //       return aNum - bNum;
+  //     }
+  //     return a.episodeOrLabel.localeCompare(b.episodeOrLabel);
+  //   });
+
+  //   const currentIndex = sortedEpisodes.findIndex(
+  //     (ep) => ep.slug === currentEpisode.slug
+  //   );
+
+  //   const prevEpisode = sortedEpisodes[currentIndex - 1];
+  //   if (prevEpisode) {
+  //     handleSelectEpisode(prevEpisode, currentServerData);
+  //   }
+  // };
+
+  // const handleNextEpisode = () => {
+  //   if (!hasNextEpisode || !currentServer || !currentEpisode || !movieData)
+  //     return;
+
+  //   const currentServerData = movieData.servers.find(
+  //     (s) => s.server.id === currentServer.server.id
+  //   );
+
+  //   if (!currentServerData) return;
+
+  //   const sortedEpisodes = [...currentServerData.episodes].sort((a, b) => {
+  //     const aNum = parseInt(a.episodeOrLabel);
+  //     const bNum = parseInt(b.episodeOrLabel);
+  //     if (!isNaN(aNum) && !isNaN(bNum)) {
+  //       return aNum - bNum;
+  //     }
+  //     return a.episodeOrLabel.localeCompare(b.episodeOrLabel);
+  //   });
+
+  //   const currentIndex = sortedEpisodes.findIndex(
+  //     (ep) => ep.slug === currentEpisode.slug
+  //   );
+
+  //   const nextEpisode = sortedEpisodes[currentIndex + 1];
+  //   if (nextEpisode) {
+  //     handleSelectEpisode(nextEpisode, currentServerData);
+  //   }
+  // };
   // Hàm xử lý chuyển tập
   const handlePrevEpisode = () => {
     if (!hasPrevEpisode || !currentServer || !currentEpisode || !movieData)
@@ -330,14 +457,16 @@ export default function WatchPage() {
 
           setCurrentServer(targetServer);
           setCurrentEpisode(targetEpisode);
+          console.log("targetEpisode", targetEpisode);
+          console.log("targetServer", targetServer);
           // Nếu có query và tìm thấy tập, cập nhật URL
-          // if (
-          //   targetEpisode &&
-          //   episodeQuery &&
-          //   targetEpisode.episodeOrLabel !== episodeQuery
-          // ) {
-          //   router.replace(`/watch/${movieSlug}?ep=${targetEpisode.slug}`);
-          // }
+          if (
+            targetEpisode &&
+            episodeQuery &&
+            targetEpisode.episodeOrLabel !== episodeQuery
+          ) {
+            router.replace(`/watch/${movieSlug}?ep=${targetEpisode.slug}`);
+          }
         }
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
@@ -347,7 +476,47 @@ export default function WatchPage() {
     };
 
     fetchData();
-  }, [movieSlug, router, findEpisodeByQuery]);
+  }, [movieSlug, episodeQuery, router, findEpisodeByQuery]);
+
+  // Save watch history
+  // const saveWatchHistory = useCallback(async () => {
+  //   if (!movieData?.movie.id || !currentEpisode?.movieId) return;
+
+  //   const payload = buildHistoryPayload(
+  //     movieData.movie.id,
+  //     currentEpisode.slug
+  //   );
+  //   const token = getToken();
+
+  //   if (!token) {
+  //     saveLocalHistory(payload);
+  //     return;
+  //   }
+
+  //   try {
+  //     await syncLocalHistory(token);
+  //     await axios.post(`${USER_API_URL}/watch-history`, payload, {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+  //   } catch (err) {
+  //     console.error("Save watch history failed", err);
+  //   }
+  // }, [movieData, currentEpisode]);
+
+  // // Increment view and save history
+  // useEffect(() => {
+  //   if (!movieData?.movie.id || !currentEpisode) return;
+
+  //   const handleViewTracking = async () => {
+  //     try {
+  //       await saveWatchHistory();
+  //     } catch (err) {
+  //       console.error("View tracking error:", err);
+  //     }
+  //   };
+
+  //   handleViewTracking();
+  // }, [movieData?.movie.id, currentEpisode, saveWatchHistory]);
 
   // Handle episode selection
   const handleSelectEpisode = useCallback(
@@ -408,108 +577,6 @@ export default function WatchPage() {
     },
     [movieSlug, router]
   );
-  const historyStorage = {
-    // Lưu dữ liệu với thời hạn (mặc định 7 ngày)
-    save: (
-      key: string,
-      value: { position: number; duration: number },
-      days = 7
-    ) => {
-      try {
-        const expiryDate = new Date().getTime() + days * 24 * 60 * 60 * 1000;
-        const data = {
-          value: value,
-          expiry: expiryDate,
-        };
-        localStorage.setItem(key, JSON.stringify(data));
-        return true;
-      } catch (error) {
-        console.error("Lỗi khi lưu:", error);
-        return false;
-      }
-    },
-
-    // Lấy dữ liệu (tự động kiểm tra hết hạn)
-    get: (key: string) => {
-      try {
-        const item = localStorage.getItem(key);
-        if (!item) return null;
-
-        const data = JSON.parse(item);
-        const now = new Date().getTime();
-
-        // Kiểm tra nếu đã hết hạn
-        if (now > data.expiry) {
-          localStorage.removeItem(key);
-          console.log(`Dữ liệu ${key} đã hết hạn`);
-          return null;
-        }
-
-        return data.value;
-      } catch (error) {
-        console.error("Lỗi khi đọc:", error);
-        return null;
-      }
-    },
-
-    // Xóa dữ liệu cụ thể
-    remove: (key: string) => {
-      localStorage.removeItem(key);
-    },
-
-    // Kiểm tra dữ liệu còn hiệu lực không
-    isValid: (key: string) => {
-      try {
-        const item = localStorage.getItem(key);
-        if (!item) return false;
-
-        const data = JSON.parse(item);
-        const now = new Date().getTime();
-        return now <= data.expiry;
-      } catch {
-        return false;
-      }
-    },
-  };
-
-  // Sử dụng:
-  const exampleData = {
-    position: 1052,
-    duration: 1220,
-  };
-
-  // 1. Lưu dữ liệu
-  historyStorage.save("videoHistory", exampleData);
-
-  // 2. Lấy dữ liệu
-  const savedData = historyStorage.get("videoHistory");
-  console.log("Dữ liệu đã lưu:", savedData);
-
-  // 3. Kiểm tra còn hiệu lực không
-  const isValid = historyStorage.isValid("videoHistory");
-  console.log("Còn hiệu lực:", isValid);
-  const cleanupExpiredStorage = () => {
-    const now = new Date().getTime();
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-
-      try {
-        const item = localStorage.getItem(key as string);
-        const data = JSON.parse(item as string);
-
-        // Nếu có thuộc tính expiry và đã hết hạn
-        if (data && data.expiry && now > data.expiry) {
-          localStorage.removeItem(key as string);
-          console.log(`Đã xóa ${key} đã hết hạn`);
-        }
-      } catch (error) {
-        // Bỏ qua nếu không phải định dạng JSON của chúng ta
-        continue;
-      }
-    }
-  };
-  cleanupExpiredStorage();
   // Loading state
   if (loading) {
     return (
@@ -583,14 +650,11 @@ export default function WatchPage() {
                 <Player
                   linkEmbed={currentEpisode.videoUrl}
                   onEnded={handleVideoEnded}
-                  onNext={handleNextEpisode}
-                  movieSlug={movieData.movie.slug}
-                  episode={currentEpisode.episodeOrLabel}
                 />
               </div>
               <PlayerControlBar
                 isFollowing={isFollowing}
-                isAutoPlay={false}
+                isAutoPlay={isAutoPlay}
                 isDarkMode={isDarkMode}
                 hasPrevEpisode={hasPrevEpisode}
                 hasNextEpisode={hasNextEpisode}
@@ -723,10 +787,7 @@ export default function WatchPage() {
             )}
 
             {/* Comments */}
-            <CommentList
-              movieId={movieData.movie.id}
-              episodeOrLabel={currentEpisode.episodeOrLabel}
-            />
+            <CommentSection movieId={movieData.movie.id} />
           </div>
         </div>
       </div>

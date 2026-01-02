@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   User,
   Mail,
@@ -20,9 +20,10 @@ import {
   Users,
   TrendingUp,
 } from "lucide-react";
-// import MovieCard from "@/components/movie/MovieCard";
 import { IMovie } from "@/types/movie.type";
 import { IMovieResponse } from "@/types/response.type";
+import api from "@/lib/api";
+import axios from "axios";
 
 // Mock data cho người dùng
 const mockUserData = {
@@ -55,7 +56,7 @@ const mockUserData = {
     autoPlay: true,
     notifications: true,
   },
-
+  createdAt: "",
   achievements: [
     { id: 1, name: "Mọt phim cấp 5", icon: "🎬", description: "Xem 100+ phim" },
     {
@@ -170,12 +171,29 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "history" | "favorites" | "reviews"
   >("overview");
-  const [userData] = useState(mockUserData);
+  const [userData, setUserData] = useState(mockUserData);
   const [watchHistory] = useState(mockWatchHistory);
   const [favoriteMovies] = useState(mockFavoriteMovies);
   const [recentReviews] = useState(mockRecentReviews);
-
-  // Format date
+  const token =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTU2NzFjZjlkMTVhMTdhMWJlNzE1ODIiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NjcyNzI5OTYsImV4cCI6MTc2NzM1OTM5Nn0.zib6B9C9qhAGofjyPKB93AkGNa-8AdOVcof3SaNWJVk";
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/profile/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setUserData(res.data.data);
+        console.log("User data:", res.data);
+      } catch (error) {
+        console.error("Failed to fetch profile data", error);
+      }
+    };
+    fetchData();
+    console.log("User data:", userData);
+  }, []);
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -219,7 +237,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
           {/* Avatar */}
           <div className="relative">
             <img
-              src={userData.avatar}
+              src={userData.avatar || "/default-avatar.png"}
               alt={userData.displayName}
               className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white dark:border-gray-800 shadow-xl"
             />
@@ -237,28 +255,34 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-3xl md:text-4xl font-bold">
-                    {userData.displayName}
+                    {userData.displayName || "sssss"}
                   </h1>
                   <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-full">
                     {userData.membership}
                   </span>
                 </div>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">
-                  @{userData.username}
-                </p>
+                {userData.username && (
+                  <p className="text-gray-600 dark:text-gray-300 mt-1">
+                    @{userData.username}
+                  </p>
+                )}
 
                 <div className="flex flex-wrap items-center gap-4 mt-4">
-                  <div className="flex items-center gap-2">
-                    <Mail size={16} className="text-gray-500" />
-                    <span>{userData.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone size={16} className="text-gray-500" />
-                    <span>{userData.phone}</span>
-                  </div>
+                  {userData.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail size={16} className="text-gray-500" />
+                      <span>{userData.email}</span>
+                    </div>
+                  )}
+                  {userData.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone size={16} className="text-gray-500" />
+                      <span>{userData.phone}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Calendar size={16} className="text-gray-500" />
-                    <span>Tham gia: {formatDate(userData.joinDate)}</span>
+                    <span>Tham gia: {formatDate(userData.createdAt)}</span>
                   </div>
                 </div>
               </div>
@@ -279,107 +303,118 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
         </div>
 
         {/* Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-8">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Eye className="text-blue-600 dark:text-blue-400" size={20} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Đã xem
-                </p>
-                <p className="text-2xl font-bold">
-                  {userData.stats.totalWatched}
-                </p>
+        {userData.stats && (
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-8">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                  <Eye className="text-blue-600 dark:text-blue-400" size={20} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Đã xem
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {userData.stats?.totalWatched || 0}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <Clock
-                  className="text-green-600 dark:text-green-400"
-                  size={20}
-                />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Giờ xem
-                </p>
-                <p className="text-2xl font-bold">
-                  {userData.stats.totalHours}h
-                </p>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <Clock
+                    className="text-green-600 dark:text-green-400"
+                    size={20}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Giờ xem
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {userData.stats?.totalHours || 0}h
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-pink-100 dark:bg-pink-900 rounded-lg">
-                <Heart className="text-pink-600 dark:text-pink-400" size={20} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Yêu thích
-                </p>
-                <p className="text-2xl font-bold">{userData.stats.favorites}</p>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-pink-100 dark:bg-pink-900 rounded-lg">
+                  <Heart
+                    className="text-pink-600 dark:text-pink-400"
+                    size={20}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Yêu thích
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {userData.stats?.favorites || "Chưa có"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                <Star
-                  className="text-yellow-600 dark:text-yellow-400"
-                  size={20}
-                />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Đánh giá
-                </p>
-                <p className="text-2xl font-bold">{userData.stats.reviews}</p>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                  <Star
+                    className="text-yellow-600 dark:text-yellow-400"
+                    size={20}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Đánh giá
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {userData.stats?.reviews || 0}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Users
-                  className="text-purple-600 dark:text-purple-400"
-                  size={20}
-                />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Người theo dõi
-                </p>
-                <p className="text-2xl font-bold">{userData.stats.followers}</p>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                  <Users
+                    className="text-purple-600 dark:text-purple-400"
+                    size={20}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Người theo dõi
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {userData.stats?.followers}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                <TrendingUp
-                  className="text-orange-600 dark:text-orange-400"
-                  size={20}
-                />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Cấp độ
-                </p>
-                <p className="text-2xl font-bold">{userData.level}</p>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                  <TrendingUp
+                    className="text-orange-600 dark:text-orange-400"
+                    size={20}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Cấp độ
+                  </p>
+                  <p className="text-2xl font-bold">{userData.level}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="mt-8 border-b border-gray-200 dark:border-gray-700">
@@ -561,30 +596,32 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                     <div>
                       <h3 className="font-semibold mb-2">Thể loại yêu thích</h3>
                       <div className="flex flex-wrap gap-2">
-                        {userData.preferences.favoriteGenres.map(
-                          (genre, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
-                            >
-                              {genre}
-                            </span>
-                          )
-                        )}
+                        {userData.preferences &&
+                          userData.preferences.favoriteGenres.map(
+                            (genre, idx) => (
+                              <span
+                                key={idx}
+                                className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+                              >
+                                {genre}
+                              </span>
+                            )
+                          )}
                       </div>
                     </div>
 
                     <div>
                       <h3 className="font-semibold mb-2">Ngôn ngữ</h3>
                       <div className="flex flex-wrap gap-2">
-                        {userData.preferences.languages.map((lang, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-sm"
-                          >
-                            {lang}
-                          </span>
-                        ))}
+                        {userData.preferences &&
+                          userData.preferences.languages.map((lang, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-sm"
+                            >
+                              {lang}
+                            </span>
+                          ))}
                       </div>
                     </div>
 
@@ -592,14 +629,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                       <span>Tự động phát</span>
                       <div
                         className={`w-12 h-6 rounded-full transition ${
-                          userData.preferences.autoPlay
+                          userData.preferences?.autoPlay
                             ? "bg-blue-500"
                             : "bg-gray-300 dark:bg-gray-600"
                         }`}
                       >
                         <div
                           className={`w-6 h-6 bg-white rounded-full shadow transform transition ${
-                            userData.preferences.autoPlay ? "translate-x-6" : ""
+                            userData.preferences?.autoPlay
+                              ? "translate-x-6"
+                              : ""
                           }`}
                         ></div>
                       </div>
@@ -609,14 +648,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                       <span>Thông báo</span>
                       <div
                         className={`w-12 h-6 rounded-full transition ${
-                          userData.preferences.notifications
+                          userData.preferences?.notifications
                             ? "bg-blue-500"
                             : "bg-gray-300 dark:bg-gray-600"
                         }`}
                       >
                         <div
                           className={`w-6 h-6 bg-white rounded-full shadow transform transition ${
-                            userData.preferences.notifications
+                            userData.preferences?.notifications
                               ? "translate-x-6"
                               : ""
                           }`}
@@ -634,7 +673,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                   </h2>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {userData.achievements.map((achievement) => (
+                    {userData.achievements?.map((achievement) => (
                       <div
                         key={achievement.id}
                         className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"

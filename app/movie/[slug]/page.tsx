@@ -1,14 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import axios from "axios";
 import MovieInfo from "@/components/movie/MovieInfo";
 import MovieMain from "@/components/movie/MovieMain";
-// import { MovieDetailResponse } from "@/types/test.type";
 import { IMovieDetailResponse } from "@/types/response.type";
-import CommentSection from "@/components/movie/CommentSection";
 import { useAppStore } from "@/stores/app.store";
 import api from "@/lib/api";
+import CommentList from "@/components/movie/CommentList";
 
 const API_URL = process.env.NEXT_PUBLIC_MOVIE_API_URL;
 
@@ -27,7 +25,7 @@ const MovieDetailPage = () => {
         setIsLoading(true);
         setError(null);
         useAppStore.setState({ lang: "en" });
-        const response = await api.get(`/movie/full/${slug}?lang=${lang}`);
+        const response = await api.get(`/movie/full/${slug}`);
 
         if (response.data.success && response.data.data) {
           setData(response.data.data);
@@ -108,7 +106,7 @@ const MovieDetailPage = () => {
                   relatedMovies={relatedByGenre}
                   sameFranchise={sameFranchise}
                 />
-                <CommentSection />
+                <CommentList movieId={movie.id} />
               </div>
             </div>
           </div>

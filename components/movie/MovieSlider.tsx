@@ -159,10 +159,11 @@ const MovieSlider: React.FC<MovieSliderProps> = ({ title, movies }) => {
           spaceBetween={20}
           slidesPerView={5}
           breakpoints={{
+            0: { slidesPerView: 1, spaceBetween: 10 },
             480: { slidesPerView: 2, spaceBetween: 14 },
             640: { slidesPerView: 3, spaceBetween: 16 },
-            1024: { slidesPerView: 4, spaceBetween: 18 },
-            1280: { slidesPerView: 5, spaceBetween: 20 },
+            768: { slidesPerView: 4, spaceBetween: 18 },
+            1024: { slidesPerView: 5, spaceBetween: 20 },
           }}
           navigation={
             showArrows && navigationElements ? navigationElements : false
@@ -181,7 +182,7 @@ const MovieSlider: React.FC<MovieSliderProps> = ({ title, movies }) => {
         >
           {limitedMovies.map((movie, idx) => (
             <SwiperSlide key={movie.id ?? movie.slug ?? idx}>
-              <Link href={`/movie/${movie.slug ?? ""}`}>
+              <Link href={`/movie/${movie.slug}`}>
                 <div className="bg-black rounded-lg shadow-md overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-xl">
                   <div className="w-full aspect-3/4 relative overflow-hidden">
                     {movie.thumbnail ? (
@@ -189,7 +190,6 @@ const MovieSlider: React.FC<MovieSliderProps> = ({ title, movies }) => {
                         src={movie.thumbnail}
                         alt={movie.title || "No title"}
                         className="object-cover"
-                        // NOTE: ensure next.config.js allows external domains for these thumbnails
                       />
                     ) : (
                       <img

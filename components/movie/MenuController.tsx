@@ -6,12 +6,13 @@ interface MenuControllerProps {
   isLoading: boolean;
   showSettings: boolean;
   settingsView: "main" | "speed" | "quality";
-  currentQuality: string;
+  currentQuality: string | number;
   playbackRate: number;
   qualities: number[];
   onChangeView: (view: "main" | "speed" | "quality") => void;
   onChangeSpeed: (speed: number) => void;
   onChangeQuality: (q: number | "auto") => void;
+  onChangeFullScreen?: (fullScreen: boolean | false) => void;
   onClose: () => void;
   onOpen: (e: React.MouseEvent) => void;
 
@@ -48,11 +49,11 @@ export default function MenuController({
   onChangeView,
   onChangeSpeed,
   onChangeQuality,
+  // onChangeFullScreen,
   onClose,
   onOpen,
   colors = defaultColors,
 }: MenuControllerProps) {
-  // merge để đảm bảo có đủ key
   const mergedColors = { ...defaultColors, ...colors };
 
   return (

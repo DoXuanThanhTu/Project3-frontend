@@ -122,20 +122,25 @@ export interface IComment {
     avatar?: string;
   };
   content: string;
-  movieId?: string;
-  seasonOrLabel?: string;
+  movieName?: string;
+  episodeOrLabel?: string;
   episode?: number;
-  likes: string[];
-  dislikes: string[];
-  shares: string[];
-  useful: string[];
+  likes?: string[];
+  dislikes?: string[];
+  shares?: string[];
+  useful?: string[];
   parentId?: string;
   isEdited: boolean;
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
   replies?: IComment[];
+  totalLike?: number;
+  totalDislike?: number;
+  totalShare?: number;
+  totalUseful?: number;
   depth?: number;
+  replyCount?: number; // ⭐ từ backend
 }
 export interface IMovieDetailResponse {
   success: boolean;

@@ -71,6 +71,7 @@ interface EpisodesByServerProps {
   currentEpisodeSlug: string;
   onSelectEpisode: (episode: Episode, server: Server) => void;
   playerRef: React.RefObject<HTMLDivElement | null>;
+  onEpisodeChangeWithoutReload?: (episode: Episode, server: Server) => void;
 }
 
 // ===== Main Component =====
@@ -79,6 +80,7 @@ const EpisodesByServer: React.FC<EpisodesByServerProps> = ({
   currentEpisodeSlug,
   onSelectEpisode,
   playerRef,
+  onEpisodeChangeWithoutReload,
 }) => {
   const [compactMode, setCompactMode] = useState(true);
   const [activeServer, setActiveServer] = useState<Server | null>(
@@ -108,22 +110,34 @@ const EpisodesByServer: React.FC<EpisodesByServerProps> = ({
   }, [activeServer]);
 
   // Xử lý chọn tập và scroll tới player
-  const handleEpisodeClick = useCallback(
-    (episode: Episode) => {
-      if (!activeServer) return;
+  // const handleEpisodeClick = useCallback(
+  //   (episode: Episode) => {
+  //     if (!activeServer) return;
 
-      onSelectEpisode(episode, activeServer);
+  //     onSelectEpisode(episode, activeServer);
 
-      requestAnimationFrame(() => {
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-      });
-    },
-    [onSelectEpisode, activeServer, playerRef]
-  );
+  //     requestAnimationFrame(() => {
+  //       window.scrollTo({
+  //         top: 0,
+  //         behavior: "smooth",
+  //       });
+  //     });
+  //   },
+  //   [onSelectEpisode, activeServer, playerRef]
+  // );
+  const handleEpisodeClick = (episode: Episode, server: Server) => {
+    // Ưu tiên dùng onEpisodeChangeWithoutReload nếu có
+    if (onEpisodeChangeWithoutReload) {
+      onEpisodeChangeWithoutReload(episode, server);
+    } else {
+      onSelectEpisode(episode, server);
+    }
 
+    // Scroll đến player
+    if (playerRef.current) {
+      playerRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
   // Xử lý chọn server
   const handleServerSelect = (server: Server) => {
     setActiveServer(server);
@@ -229,7 +243,7 @@ const EpisodesByServer: React.FC<EpisodesByServerProps> = ({
               return (
                 <button
                   key={`${episode.serverId}-${episodeLabel}`}
-                  onClick={() => handleEpisodeClick(episode)}
+                  onClick={() => handleEpisodeClick(episode, activeServer)}
                   className={`cursor-pointer rounded-lg flex flex-col items-center justify-center h-14 transition-all hover:scale-105
                     ${
                       isActive
@@ -249,7 +263,7 @@ const EpisodesByServer: React.FC<EpisodesByServerProps> = ({
             return (
               <div
                 key={`${episode.serverId}-${episodeLabel}`}
-                onClick={() => handleEpisodeClick(episode)}
+                onClick={() => handleEpisodeClick(episode, activeServer)}
                 className={`cursor-pointer group relative rounded-lg overflow-hidden transition-all duration-200 ${
                   isActive ? "ring-2 ring-blue-500" : ""
                 }`}

@@ -5,12 +5,12 @@ import { useAppStore } from "@/stores/app.store";
 import { useI18n } from "@/hooks/useI18n";
 import Skeleton from "@/components/ui/Skeleton";
 import MovieSlider from "@/components/movie/MovieSlider";
-import CommentSection from "@/components/movie/CommentSection";
 import { TopSlide } from "@/components/movie/TopSlide";
 import { IMovieResponse } from "@/types/res.type";
 import Navbar from "@/components/layout/Navbar";
 import api from "@/lib/api";
 import Link from "next/link";
+import CommentList from "@/components/movie/CommentList";
 
 export default function HomePage() {
   const t = useI18n();
@@ -88,7 +88,7 @@ export default function HomePage() {
               renderMovieSkeleton()
             ) : hasMovies ? (
               movies.map((movie, i) => (
-                <Link key={`movie ${i}`} href={`/movie/${movie.id}`}>
+                <Link key={`movie ${i}`} href={`/movie/${movie.slug}`}>
                   <div className="cursor-pointer transition-transform hover:scale-105">
                     <div className="bg-black aspect-2/3 overflow-hidden rounded-lg">
                       <img
@@ -119,7 +119,7 @@ export default function HomePage() {
           {/* New Movies */}
           <MovieSlider title="New Movies" movies={movies.slice(0, 10)} />
           {/* Comment Section */}
-          <CommentSection />
+          <CommentList />
         </div>
       </div>
     </div>

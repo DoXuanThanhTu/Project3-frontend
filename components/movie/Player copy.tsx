@@ -1,35 +1,34 @@
 "use client";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  startTransition,
+} from "react";
 import Hls from "hls.js";
 import {
-  Loader2,
+  Play,
   Pause,
   Volume2,
   VolumeX,
-  Play,
-  Minimize,
   Maximize,
-  SkipForward,
+  Minimize,
+  Loader2,
 } from "lucide-react";
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
 import MenuController from "./MenuController";
 
+/* =======================
+   Types & Constants
+   ======================= */
 interface PlayerProps {
-  linkEmbed?: string;
+  linkEmbed: string;
   colors?: {
     primary?: string;
     secondary?: string;
     accent?: string;
     controlsBg?: string;
   };
-  movieSlug?: string;
-  episode?: string;
-  onNext?: () => void;
   onEnded?: () => void;
   setting?: {
     volume?: number;
@@ -42,14 +41,6 @@ interface PlayerProps {
   onSettingChange?: (newSetting: Partial<PlayerProps["setting"]>) => void;
 }
 
-interface HistoryItem {
-  videoId: string;
-  currentTime: number;
-  duration: number;
-  timestamp: number;
-  expires: number;
-}
-
 const defaultColors = {
   primary: "bg-purple-500",
   secondary: "text-purple-400",
@@ -58,54 +49,82 @@ const defaultColors = {
 };
 
 const LOCAL_KEY = "playerSettings";
-const HISTORY_KEY = "playerHistory";
 
+/* =======================
+   Utility helpers
+   ======================= */
+const formatTime = (time: number) => {
+  if (isNaN(time) || time === Infinity) return "00:00";
+  const minutes = Math.floor(time / 60);
+  const seconds = Math.floor(time % 60);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0"
+  )}`;
+};
+
+const waitForEvent = (
+  el: EventTarget,
+  eventName: string,
+  timeout = 1500
+): Promise<Event | null> =>
+  new Promise((resolve) => {
+    let done = false;
+    const onEvent = (ev: Event) => {
+      if (done) return;
+      done = true;
+      el.removeEventListener(eventName, onEvent as any);
+      clearTimeout(timer);
+      resolve(ev);
+    };
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      el.removeEventListener(eventName, onEvent as any);
+      resolve(null);
+    }, timeout);
+    el.addEventListener(eventName, onEvent as any);
+  });
+
+/* =======================
+   Hook: playback memory
+   ======================= */
+function usePlaybackMemory(videoRef: React.RefObject<HTMLVideoElement | null>) {
+  const wasPlayingRef = useRef(false);
+
+  const rememberPlaybackState = useCallback(() => {
+    const v = videoRef.current;
+    wasPlayingRef.current = v ? !v.paused : false;
+  }, [videoRef]);
+
+  const restorePlaybackState = useCallback(async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (wasPlayingRef.current) {
+      try {
+        await v.play();
+      } catch {}
+    } else {
+      try {
+        v.pause();
+      } catch {}
+    }
+  }, [videoRef]);
+
+  return { rememberPlaybackState, restorePlaybackState };
+}
+
+/* =======================
+   Player Component
+   ======================= */
 export default function Player({
   linkEmbed,
   colors = {},
   onEnded,
-  onNext,
   setting: propSetting,
   onSettingChange,
-  movieSlug,
-  episode,
 }: PlayerProps) {
   const playerColors = { ...defaultColors, ...colors };
-
-  // Function to generate a unique ID for the video
-  const generateVideoId = useCallback((url: string) => {
-    try {
-      // Use URL pathname or full URL as base for ID
-      const urlObj = new URL(url);
-      return `${urlObj.hostname}${urlObj.pathname}`.replace(/\/$/, "");
-    } catch {
-      // Fallback to the URL itself if it's not a valid URL
-      return url;
-    }
-  }, []);
-
-  const waitForEvent = (
-    el: EventTarget,
-    eventName: string,
-    timeout = 1500
-  ): Promise<Event | null> =>
-    new Promise((resolve) => {
-      let done = false;
-      const onEvent = (ev: Event) => {
-        if (done) return;
-        done = true;
-        el.removeEventListener(eventName, onEvent as any);
-        clearTimeout(timer);
-        resolve(ev);
-      };
-      const timer = setTimeout(() => {
-        if (done) return;
-        done = true;
-        el.removeEventListener(eventName, onEvent as any);
-        resolve(null);
-      }, timeout);
-      el.addEventListener(eventName, onEvent as any);
-    });
 
   // refs
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -116,11 +135,6 @@ export default function Player({
   const prevVolumeRef = useRef<number>(1);
   const propSettingRef = useRef(propSetting);
   const isSwitchingSourceRef = useRef(false);
-
-  // History update interval ref
-  const historyUpdateInterval = useRef<NodeJS.Timeout | null>(null);
-  // Realtime update flag
-  const realtimeUpdateRef = useRef(false);
 
   // value refs for stable saving
   const volumeRef = useRef<number>(1);
@@ -151,163 +165,8 @@ export default function Player({
   const [qualities, setQualities] = useState<number[]>([]);
   const [currentQuality, setCurrentQuality] = useState<string | number>("auto");
 
-  function usePlaybackMemory(
-    videoRef: React.RefObject<HTMLVideoElement | null>
-  ) {
-    const wasPlayingRef = useRef(false);
-
-    const rememberPlaybackState = useCallback(() => {
-      const v = videoRef.current;
-      wasPlayingRef.current = v ? !v.paused : false;
-    }, [videoRef]);
-
-    const restorePlaybackState = useCallback(async () => {
-      const v = videoRef.current;
-      if (!v) return;
-      if (wasPlayingRef.current) {
-        try {
-          await v.play();
-        } catch {}
-      } else {
-        try {
-          v.pause();
-        } catch {}
-      }
-    }, [videoRef]);
-
-    return { rememberPlaybackState, restorePlaybackState };
-  }
-
   const { rememberPlaybackState, restorePlaybackState } =
     usePlaybackMemory(videoRef);
-
-  /* =======================
-     HISTORY FUNCTIONS
-     ======================= */
-  const saveHistoryToLocal = useCallback(
-    (videoId: string, currentTime: number, duration: number) => {
-      if (!videoId || duration <= 0) return;
-
-      try {
-        // Get existing history
-        const existingHistory = localStorage.getItem(HISTORY_KEY);
-        let history: HistoryItem[] = existingHistory
-          ? JSON.parse(existingHistory)
-          : [];
-
-        // Clean expired items (older than 7 days)
-        const now = Date.now();
-        const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-        history = history.filter((item) => item.timestamp > sevenDaysAgo);
-
-        // Find existing item for this video
-        const existingIndex = history.findIndex(
-          (item) => item.videoId === videoId
-        );
-
-        // Create new history item
-        const historyItem: HistoryItem = {
-          videoId,
-          currentTime,
-          duration,
-          timestamp: now,
-          expires: now + 7 * 24 * 60 * 60 * 1000, // 7 days from now
-        };
-
-        // Update or add the item
-        if (existingIndex >= 0) {
-          history[existingIndex] = historyItem;
-        } else {
-          history.push(historyItem);
-        }
-
-        // Keep only the latest 50 items to prevent storage overflow
-        history.sort((a, b) => b.timestamp - a.timestamp);
-        history = history.slice(0, 50);
-
-        // Save to localStorage
-        localStorage.setItem(
-          `${movieSlug}-${episode}`,
-          JSON.stringify(history)
-        );
-
-        console.log("History saved:", { videoId, currentTime, duration });
-      } catch (error) {
-        console.error("Error saving history:", error);
-      }
-    },
-    []
-  );
-
-  const getHistoryFromLocal = useCallback(
-    (videoId: string): HistoryItem | null => {
-      try {
-        const existingHistory = localStorage.getItem(HISTORY_KEY);
-        if (!existingHistory) return null;
-
-        const history: HistoryItem[] = JSON.parse(existingHistory);
-        const now = Date.now();
-
-        // Find the item and check if it's expired
-        const item = history.find((item) => item.videoId === videoId);
-        if (!item) return null;
-
-        // Check if expired
-        if (now > item.expires) {
-          // Remove expired item
-          const filteredHistory = history.filter((i) => i.videoId !== videoId);
-          localStorage.setItem(HISTORY_KEY, JSON.stringify(filteredHistory));
-          return null;
-        }
-
-        return item;
-      } catch (error) {
-        console.error("Error reading history:", error);
-        return null;
-      }
-    },
-    []
-  );
-
-  const startHistoryUpdateInterval = useCallback(
-    (videoId: string) => {
-      // Clear any existing interval
-      if (historyUpdateInterval.current) {
-        clearInterval(historyUpdateInterval.current);
-      }
-
-      // Start new interval (update every 30 seconds)
-      historyUpdateInterval.current = setInterval(() => {
-        const video = videoRef.current;
-        if (video && videoId && !isSeekingRef.current) {
-          saveHistoryToLocal(videoId, video.currentTime, video.duration);
-        }
-      }, 30000); // 30 seconds
-    },
-    [saveHistoryToLocal]
-  );
-
-  const stopHistoryUpdateInterval = useCallback(() => {
-    if (historyUpdateInterval.current) {
-      clearInterval(historyUpdateInterval.current);
-      historyUpdateInterval.current = null;
-    }
-  }, []);
-
-  const updateHistoryRealtime = useCallback(
-    (videoId: string) => {
-      const video = videoRef.current;
-      if (
-        video &&
-        videoId &&
-        !isSeekingRef.current &&
-        realtimeUpdateRef.current
-      ) {
-        saveHistoryToLocal(videoId, video.currentTime, video.duration);
-      }
-    },
-    [saveHistoryToLocal]
-  );
 
   /* =======================
      keep refs in sync with state
@@ -324,23 +183,34 @@ export default function Player({
     isFullScreenRef.current = isFullScreen;
   }, [isFullScreen]);
 
+  /* =======================
+     Local storage helpers (stable)
+     - reads current values from refs unless override provided
+     ======================= */
   const saveSettingsToLocal = useCallback(
     (override?: Partial<Record<string, any>>) => {
+      const video = videoRef.current;
       const payload = {
         volume:
           override?.volume ??
           Math.round((override?.volumeRaw ?? volumeRef.current * 100) || 0),
         speedrate: override?.speedrate ?? playbackRateRef.current,
+        follow: propSettingRef.current?.follow ?? true,
         autoPlay: propSettingRef.current?.autoPlay ?? true,
+        darkMode: propSettingRef.current?.darkMode ?? false,
         isfullScreen:
           override?.isfullScreen ?? isFullScreenRef.current ?? false,
+        currentTime:
+          typeof override?.currentTime === "number"
+            ? override.currentTime
+            : video?.currentTime ?? 0,
       };
       try {
         localStorage.setItem(LOCAL_KEY, JSON.stringify(payload));
       } catch {}
     },
     []
-  );
+  ); // stable, no reactive deps
 
   const readSettingsFromLocal = useCallback(() => {
     try {
@@ -364,6 +234,7 @@ export default function Player({
       if (settings.speedrate !== undefined) {
         const newRate = Math.min(Math.max(settings.speedrate, 0.25), 4);
         v.playbackRate = newRate;
+        // setPlaybackRate(newRate);
       }
 
       if (settings.volume === 0) {
@@ -407,6 +278,27 @@ export default function Player({
       propSettings?.volume === 0 ? true : !!savedSettings?.isMuted;
     setIsMuted(isMutedValue);
     v.muted = isMutedValue;
+
+    if (savedSettings?.currentTime && savedSettings.currentTime > 0) {
+      const applyTime = () => {
+        try {
+          v.currentTime = Math.min(
+            savedSettings.currentTime || 0,
+            v.duration || 0
+          );
+          setCurrentTime(v.currentTime);
+          setProgress((v.currentTime / (v.duration || 1)) * 100 || 0);
+        } catch {}
+      };
+      if (v.readyState >= 2) applyTime();
+      else {
+        const onLoaded = () => {
+          applyTime();
+          v.removeEventListener("loadedmetadata", onLoaded);
+        };
+        v.addEventListener("loadedmetadata", onLoaded);
+      }
+    }
   }, []);
 
   /* =======================
@@ -431,75 +323,10 @@ export default function Player({
     } catch {}
   }, []);
 
-  const resetUiForNewSource = useCallback(() => {
-    // timeline
-    setProgress(0);
-    setBuffered(0);
-    setCurrentTime(0);
-    setDuration(0);
-
-    // playback
-    setIsPlaying(false);
-    setIsLoading(true);
-
-    // menu / control
-    setShowSettings(false);
-    setSettingsView("main");
-
-    // quality
-    setQualities([]);
-    setCurrentQuality("auto");
-
-    // stop history interval for previous video
-    stopHistoryUpdateInterval();
-  }, [stopHistoryUpdateInterval]);
-
-  const parseDurationFromManifest = useCallback(
-    (manifestContent: string): number => {
-      try {
-        let totalDuration = 0;
-        const lines = manifestContent.split("\n");
-        let currentSegmentDuration = 0;
-
-        for (const line of lines) {
-          const trimmedLine = line.trim();
-
-          if (trimmedLine.startsWith("#EXTINF:")) {
-            const durationMatch = trimmedLine.match(/#EXTINF:([0-9.]+)/);
-            if (durationMatch && durationMatch[1]) {
-              currentSegmentDuration = parseFloat(durationMatch[1]);
-              totalDuration += currentSegmentDuration;
-            }
-          }
-
-          if (trimmedLine.startsWith("#EXT-X-TARGETDURATION:")) {
-            const targetMatch = trimmedLine.match(
-              /#EXT-X-TARGETDURATION:([0-9.]+)/
-            );
-            if (targetMatch && targetMatch[1]) {
-              const targetDuration = parseFloat(targetMatch[1]);
-              return targetDuration * 10;
-            }
-          }
-
-          if (trimmedLine === "#EXT-X-ENDLIST") {
-            return totalDuration;
-          }
-        }
-
-        return totalDuration > 0 ? totalDuration : 0;
-      } catch (error) {
-        console.error("Error parsing manifest duration:", error);
-        return 0;
-      }
-    },
-    []
-  );
-
   const setupHlsForVideo = useCallback(
-    (src?: string) => {
+    (src: string) => {
       const video = videoRef.current;
-      if (!video || !src) return;
+      if (!video) return;
 
       isSwitchingSourceRef.current = true;
       startTransition(() => setIsLoading(true));
@@ -511,12 +338,6 @@ export default function Player({
         } catch {}
         hlsRef.current = null;
       }
-
-      // Generate video ID for history
-      const videoId = generateVideoId(src);
-
-      // Load history for this video
-      const historyItem = getHistoryFromLocal(videoId);
 
       if (Hls.isSupported()) {
         const hls = new Hls({
@@ -534,41 +355,12 @@ export default function Player({
         hls.attachMedia(video);
         hls.loadSource(src);
 
-        let manifestDuration = 0;
-        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-          try {
-            if (data.levels && data.levels.length > 0) {
-              const firstLevel = data.levels[0];
-              if (firstLevel.details && firstLevel.details.totalduration) {
-                manifestDuration = firstLevel.details.totalduration;
-                setDuration(manifestDuration);
-              }
-            }
-          } catch (error) {
-            console.error("Error getting duration from manifest:", error);
-          }
-        });
-
         hls.on(Hls.Events.MANIFEST_PARSED, (_, data: any) => {
           const availableQualities = (data.levels || [])
             .map((l: any) => l.height)
             .filter(Boolean)
             .sort((a: number, b: number) => a - b);
           setQualities(availableQualities);
-
-          if (manifestDuration === 0 && data.levels && data.levels.length > 0) {
-            try {
-              const firstLevel: any = data.levels[0];
-              if (firstLevel.details && firstLevel.details.totalduration) {
-                setDuration(firstLevel.details.totalduration);
-              }
-            } catch (error) {
-              console.error(
-                "Error getting duration from parsed manifest:",
-                error
-              );
-            }
-          }
         });
 
         const onLoadedMeta = () => {
@@ -577,40 +369,8 @@ export default function Player({
           else if (propSettingRef.current)
             applyPropSettings(propSettingRef.current);
 
-          // Apply history if available
-          if (historyItem && videoId) {
-            const targetTime = Math.min(
-              historyItem.currentTime,
-              video.duration || historyItem.duration || 0
-            );
-
-            // Only apply if video has valid duration and time is reasonable
-            if (video.duration && video.duration > 0 && targetTime > 0) {
-              // Don't seek to the very end (last 5 seconds)
-              if (targetTime < video.duration - 5) {
-                setTimeout(() => {
-                  video.currentTime = targetTime;
-                  setCurrentTime(targetTime);
-                  setProgress((targetTime / video.duration) * 100);
-                  console.log("Restored from history:", {
-                    targetTime,
-                    duration: video.duration,
-                  });
-                }, 500);
-              }
-            }
-          }
-
-          // Update duration từ video element nếu có
-          if (video.duration && video.duration !== Infinity) {
-            setDuration(video.duration);
-          }
-
           setIsLoading(false);
           isSwitchingSourceRef.current = false;
-
-          // Start history update interval
-          startHistoryUpdateInterval(videoId);
 
           if (propSettingRef.current?.autoPlay) {
             video.play().catch(() => {});
@@ -619,114 +379,38 @@ export default function Player({
 
         video.addEventListener("loadedmetadata", onLoadedMeta, { once: true });
 
-        const onDurationChange = () => {
-          if (video.duration && video.duration !== Infinity) {
-            setDuration(video.duration);
-          }
-        };
-        video.addEventListener("durationchange", onDurationChange);
-
+        // return cleanup for this setup
         return () => {
           video.removeEventListener("loadedmetadata", onLoadedMeta);
-          video.removeEventListener("durationchange", onDurationChange);
         };
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = src;
-
         const onLoadedMeta = () => {
           const saved = readSettingsFromLocal();
           if (saved) applySavedSettings(saved);
-
-          // Apply history if available
-          if (historyItem && videoId) {
-            const targetTime = Math.min(
-              historyItem.currentTime,
-              video.duration || historyItem.duration || 0
-            );
-
-            if (video.duration && video.duration > 0 && targetTime > 0) {
-              if (targetTime < video.duration - 5) {
-                setTimeout(() => {
-                  video.currentTime = targetTime;
-                  setCurrentTime(targetTime);
-                  setProgress((targetTime / video.duration) * 100);
-                  console.log("Restored from history:", {
-                    targetTime,
-                    duration: video.duration,
-                  });
-                }, 500);
-              }
-            }
-          }
-
-          if (video.duration && video.duration !== Infinity) {
-            setDuration(video.duration);
-          }
-
           setIsLoading(false);
           isSwitchingSourceRef.current = false;
-
-          // Start history update interval
-          startHistoryUpdateInterval(videoId);
         };
-
         video.addEventListener("loadedmetadata", onLoadedMeta, { once: true });
-
-        const onDurationChange = () => {
-          if (video.duration && video.duration !== Infinity) {
-            setDuration(video.duration);
-          }
-        };
-        video.addEventListener("durationchange", onDurationChange);
-
-        return () => {
-          video.removeEventListener("loadedmetadata", onLoadedMeta);
-          video.removeEventListener("durationchange", onDurationChange);
-        };
+        return () => video.removeEventListener("loadedmetadata", onLoadedMeta);
       } else {
+        // unsupported
         setIsLoading(false);
         isSwitchingSourceRef.current = false;
       }
       return;
     },
-    [
-      applySavedSettings,
-      applyPropSettings,
-      readSettingsFromLocal,
-      parseDurationFromManifest,
-      generateVideoId,
-      getHistoryFromLocal,
-      startHistoryUpdateInterval,
-    ]
+    [applySavedSettings, applyPropSettings, readSettingsFromLocal]
   );
-
-  const formatTime = (time: number) => {
-    if (isNaN(time) || time === Infinity) return "00:00";
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
-      2,
-      "0"
-    )}`;
-  };
 
   // watch linkEmbed changes
   useEffect(() => {
-    resetUiForNewSource();
-
     const cleanup = setupHlsForVideo(linkEmbed);
-
     return () => {
       if (typeof cleanup === "function") cleanup();
       isSwitchingSourceRef.current = false;
-      stopHistoryUpdateInterval();
     };
-  }, [
-    linkEmbed,
-    setupHlsForVideo,
-    resetUiForNewSource,
-    stopHistoryUpdateInterval,
-  ]);
+  }, [linkEmbed, setupHlsForVideo]);
 
   // cleanup on unmount
   useEffect(() => {
@@ -737,9 +421,8 @@ export default function Player({
         } catch {}
         hlsRef.current = null;
       }
-      stopHistoryUpdateInterval();
     };
-  }, [stopHistoryUpdateInterval]);
+  }, []);
 
   /* =======================
      Video event wiring
@@ -766,27 +449,13 @@ export default function Player({
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !linkEmbed) return;
-
-    const videoId = generateVideoId(linkEmbed);
-    let updateTimeout: NodeJS.Timeout | null = null;
+    if (!v) return;
 
     const updateProgress = () => {
       if (isSwitchingSourceRef.current) return;
       setProgress((v.currentTime / (v.duration || 1)) * 100);
       setCurrentTime(v.currentTime);
-
-      // Update history in realtime (debounced)
-      if (realtimeUpdateRef.current && videoId) {
-        if (updateTimeout) clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(() => {
-          saveHistoryToLocal(videoId, v.currentTime, v.duration);
-        }, 1000); // Debounce 1 second
-      }
-
-      if (v.duration && v.duration !== Infinity && v.duration !== duration) {
-        setDuration(v.duration);
-      }
+      setDuration(v.duration || 0);
     };
 
     const updateBuffer = () => {
@@ -796,27 +465,20 @@ export default function Player({
       }
     };
 
-    const handlePlayStart = () => {
-      if (videoId) {
-        // Save history when video starts playing
-        saveHistoryToLocal(videoId, v.currentTime, v.duration);
-        // Enable realtime updates
-        realtimeUpdateRef.current = true;
-      }
-    };
-
     v.addEventListener("timeupdate", updateProgress);
     v.addEventListener("progress", updateBuffer);
-    v.addEventListener("play", handlePlayStart);
 
     return () => {
       v.removeEventListener("timeupdate", updateProgress);
       v.removeEventListener("progress", updateBuffer);
-      v.removeEventListener("play", handlePlayStart);
-      if (updateTimeout) clearTimeout(updateTimeout);
     };
-  }, [duration, linkEmbed, generateVideoId, saveHistoryToLocal]);
+  }, []);
 
+  /* =======================
+     Fullscreen tracking
+     - listens to real document.fullscreenElement
+     - saves with override to avoid race
+     ======================= */
   useEffect(() => {
     const onFsChange = () => {
       const isNowFullscreen = !!document.fullscreenElement;
@@ -827,28 +489,22 @@ export default function Player({
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, [saveSettingsToLocal]);
 
+  /* =======================
+     Handlers (useCallback)
+     ======================= */
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
-    if (!v || !linkEmbed) return;
-
+    if (!v) return;
     if (v.paused) {
       v.play().catch(() => {});
       setIsPlaying(true);
-
-      // Save history when play starts
-      if (linkEmbed) {
-        const videoId = generateVideoId(linkEmbed);
-        saveHistoryToLocal(videoId, v.currentTime, v.duration);
-        realtimeUpdateRef.current = true;
-      }
     } else {
       v.pause();
       setIsPlaying(false);
-      realtimeUpdateRef.current = false;
     }
-
+    // save currentTime and other stable values
     saveSettingsToLocal();
-  }, [saveSettingsToLocal, linkEmbed, generateVideoId, saveHistoryToLocal]);
+  }, [saveSettingsToLocal]);
 
   const handleSeekStart = useCallback(
     (e: React.PointerEvent<HTMLInputElement>) => {
@@ -857,7 +513,6 @@ export default function Player({
       pendingSeekValueRef.current = Number(
         (e.target as HTMLInputElement).value
       );
-      realtimeUpdateRef.current = false; // Disable realtime updates during seeking
     },
     [isPlaying]
   );
@@ -875,7 +530,7 @@ export default function Player({
     async (time: number) => {
       const video = videoRef.current;
       const hls = hlsRef.current;
-      if (!video || !linkEmbed) return;
+      if (!video) return;
 
       const token = ++seekTokenRef.current;
       const wasPlaying = !video.paused;
@@ -920,13 +575,6 @@ export default function Player({
         setIsLoading(false);
         if (!isSeekingRef.current) setIsPlaying(!video.paused);
         saveSettingsToLocal({ currentTime: video.currentTime });
-
-        // Save history after seeking
-        if (linkEmbed) {
-          const videoId = generateVideoId(linkEmbed);
-          saveHistoryToLocal(videoId, video.currentTime, video.duration);
-        }
-
         return;
       }
 
@@ -954,20 +602,8 @@ export default function Player({
 
       setIsLoading(false);
       saveSettingsToLocal({ currentTime: video.currentTime });
-
-      // Save history after seeking
-      if (linkEmbed) {
-        const videoId = generateVideoId(linkEmbed);
-        saveHistoryToLocal(videoId, video.currentTime, video.duration);
-      }
     },
-    [
-      tryFlushHlsBuffer,
-      saveSettingsToLocal,
-      linkEmbed,
-      generateVideoId,
-      saveHistoryToLocal,
-    ]
+    [tryFlushHlsBuffer, saveSettingsToLocal]
   );
 
   const handleSeekEnd = useCallback(
@@ -985,7 +621,6 @@ export default function Player({
       setCurrentTime(newTime);
       safeSeek(newTime).then(() => {
         setIsPlaying(seekWasPlayingRef.current);
-        realtimeUpdateRef.current = true; // Re-enable realtime updates
       });
     },
     [safeSeek]
@@ -1000,6 +635,7 @@ export default function Player({
       v.volume = prevVolumeRef.current || 1;
       setVolume(prevVolumeRef.current || 1);
       setIsMuted(false);
+      // save explicit volume override so it's immediate
       saveSettingsToLocal({
         volume: Math.round((prevVolumeRef.current || 1) * 100),
         volumeRaw: (prevVolumeRef.current || 1) * 100,
@@ -1028,6 +664,7 @@ export default function Player({
       setIsMuted(newVol === 0);
       if (onSettingChange)
         onSettingChange({ volume: Math.round(newVol * 100) });
+      // pass override so saved value is exact immediately
       saveSettingsToLocal({
         volume: Math.round(newVol * 100),
         volumeRaw: Math.round(newVol * 100),
@@ -1040,6 +677,7 @@ export default function Player({
     const container = containerRef.current;
     if (!container) return;
 
+    // do NOT set state or save here — let fullscreenchange event handle it
     if (!document.fullscreenElement) {
       container.requestFullscreen().catch(() => {});
     } else {
@@ -1060,19 +698,10 @@ export default function Player({
       v.playbackRate = speed;
       setPlaybackRate(speed);
       if (onSettingChange) onSettingChange({ speedrate: speed });
+      // override to ensure immediate save
       saveSettingsToLocal({ speedrate: speed });
     },
     [onSettingChange, saveSettingsToLocal]
-  );
-
-  const changeFullScreen = useCallback(
-    (fullScreen: boolean) => {
-      if (fullScreen) {
-        toggleFullScreen();
-      }
-      saveSettingsToLocal({ fullscreen: fullScreen });
-    },
-    [toggleFullScreen, saveSettingsToLocal]
   );
 
   const changeQuality = useCallback(
@@ -1155,11 +784,17 @@ export default function Player({
     }
   }, [propSetting, applyPropSettings]);
 
+  /* =======================
+     Initial load: try to apply saved settings
+     ======================= */
   useEffect(() => {
     const saved = readSettingsFromLocal();
     if (saved) applySavedSettings(saved);
   }, [readSettingsFromLocal, applySavedSettings]);
 
+  /* =======================
+     Render
+     ======================= */
   return (
     <div
       ref={containerRef}
@@ -1169,6 +804,8 @@ export default function Player({
       onMouseMove={handleMouseMove}
     >
       <video ref={videoRef} className="w-full h-full" playsInline />
+
+      {/* overlay clickable area toggles play */}
       <div className="absolute inset-0" onClick={togglePlay} />
 
       {isLoading && (
@@ -1245,16 +882,6 @@ export default function Player({
           </div>
 
           <div className="flex items-center gap-3 relative">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onNext?.();
-              }}
-              className="p-1"
-              aria-label="Next"
-            >
-              <SkipForward size={20} />
-            </button>
             <MenuController
               isLoading={isLoading}
               showSettings={showSettings}

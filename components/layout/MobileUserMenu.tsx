@@ -16,8 +16,8 @@ interface UserMenuProps {
   onLogout?: () => void;
 }
 
-export default function UserMenu({ onLogout }: UserMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
+export default function MobileUserMenu({ onLogout }: UserMenuProps) {
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -35,7 +35,10 @@ export default function UserMenu({ onLogout }: UserMenuProps) {
   // Đóng menu khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -68,57 +71,15 @@ export default function UserMenu({ onLogout }: UserMenuProps) {
   return (
     <div
       className="relative"
-      ref={menuRef}
+      ref={mobileMenuRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {/* Nút user */}
-      <button
-        type="button"
-        onClick={toggleMenu}
-        className="flex items-center gap-2 px-4 py-2 rounded-full bg-linear-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 transition-all font-medium shadow-lg group"
-      >
-        <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-blue-400/50 group-hover:border-blue-400 transition-colors">
-          <img
-            src={user?.avatar?.trim() ? user.avatar : "/default-avatar.png"}
-            alt="avatar"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <span className="hidden xl:inline max-w-30 truncate">
-          {user?.displayName || "Người dùng"}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
 
       {/* Popup menu */}
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-lg py-2 text-sm animate-fadeIn z-50">
-          {/* Thông tin user */}
-          <div className="px-4 py-3 border-b border-gray-700">
-            <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                <img
-                  src={
-                    user?.avatar?.trim() ? user.avatar : "/default-avatar.png"
-                  }
-                  alt="avatar"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white truncate">
-                  {user?.displayName || "Người dùng"}
-                </p>
-                {/* <p className="text-xs text-gray-400 truncate">{displayName}</p> */}
-              </div>
-            </div>
-          </div>
-
+      {user && (
+        <div className="absolute mt-2 w-56 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-lg py-2 text-sm animate-fadeIn z-50">
           {/* Menu items */}
           <Link
             href="/profile"
