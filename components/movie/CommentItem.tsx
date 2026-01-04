@@ -19,6 +19,7 @@ import {
   Heart,
   Flame,
 } from "lucide-react";
+import Image from "next/image";
 
 const PAGE_SIZE = 5;
 
@@ -129,7 +130,7 @@ export default function CommentItem({
   const handleUseful = async () => {
     if (!user) return;
     try {
-      const res = await api.post(`/api/comments/${comment.id}/useful`);
+      const res = await api.post(`/comments/${comment.id}/useful`);
       const updatedComment: IComment = res.data;
       setUsefulCount(updatedComment.totalUseful || 0);
       setUserUseful(updatedComment.useful?.includes(user._id) || false);
@@ -199,8 +200,11 @@ export default function CommentItem({
               {comment.user?.avatar ? (
                 <img
                   src={comment.user.avatar}
-                  alt={comment.user.displayName}
+                  alt={comment.user.displayName || ""}
                   className="w-10 h-10 rounded-full border-2 border-white dark:border-gray-700 shadow-sm"
+                  // width={40}
+                  // height={40}
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center border-2 border-white dark:border-gray-700">
@@ -323,7 +327,7 @@ export default function CommentItem({
               </button>
 
               {/* Useful Button - Xanh khi đã useful */}
-              <button
+              {/* <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleUseful();
@@ -356,7 +360,7 @@ export default function CommentItem({
                     ({usefulCount})
                   </span>
                 )}
-              </button>
+              </button> */}
 
               {/* Share Button */}
               <button

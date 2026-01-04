@@ -79,7 +79,7 @@ export default function MobileUserMenu({ onLogout }: UserMenuProps) {
 
       {/* Popup menu */}
       {user && (
-        <div className="absolute mt-2 w-56 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-lg py-2 text-sm animate-fadeIn z-50">
+        <div className=" mt-2 w-56  rounded-xl shadow-lg py-2 text-sm animate-fadeIn z-50">
           {/* Menu items */}
           <Link
             href="/profile"
@@ -87,9 +87,9 @@ export default function MobileUserMenu({ onLogout }: UserMenuProps) {
             onClick={() => setIsOpen(false)}
           >
             <Settings className="w-4 h-4" />
-            <span>Chỉnh sửa thông tin</span>
+            <span>Thông tin</span>
           </Link>
-          <Link
+          {/* <Link
             href="/favorites"
             className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 transition-colors text-gray-200"
             onClick={() => setIsOpen(false)}
@@ -104,7 +104,7 @@ export default function MobileUserMenu({ onLogout }: UserMenuProps) {
           >
             <Clock className="w-4 h-4" />
             <span>Phim đã xem</span>
-          </Link>
+          </Link> */}
 
           {/* Divider */}
           <div className="my-2 border-t border-gray-700"></div>

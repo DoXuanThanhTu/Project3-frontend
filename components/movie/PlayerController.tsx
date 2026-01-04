@@ -138,7 +138,7 @@ const PlayerControlBar: React.FC<PlayerControlBarProps> = ({
           >
             <HeartIcon active={isFollowing} />
             <span className="hidden sm:inline">
-              {isFollowing ? "Đã theo dõi" : "Theo dõi"}
+              {isFollowing ? "Đã yêu thích" : "Yêu thích"}
             </span>
           </ControlButton>
 
@@ -185,12 +185,12 @@ const PlayerControlBar: React.FC<PlayerControlBarProps> = ({
         </div>
 
         {/* RIGHT */}
-        <ControlButton active={isDarkMode} onClick={onDarkModeToggle}>
+        {/* <ControlButton active={isDarkMode} onClick={onDarkModeToggle}>
           <DarkModeIcon />
           <span className="hidden sm:inline">
             {isDarkMode ? "Bật đèn" : "Tắt đèn"}
           </span>
-        </ControlButton>
+        </ControlButton> */}
       </div>
     </div>
   );

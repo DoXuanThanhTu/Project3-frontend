@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Play } from "lucide-react";
 import { Button } from "../ui/Button";
+import Image from "next/image";
 
 // ===== Types =====
 interface Genre {
@@ -269,10 +270,13 @@ const EpisodesByServer: React.FC<EpisodesByServerProps> = ({
                 }`}
               >
                 <div className="aspect-video bg-gray-800 overflow-hidden">
-                  <img
+                  <Image
                     src={getThumbnailUrl(episode)}
                     alt={`Tập ${episodeLabel}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    width={400}
+                    height={600}
+                    loading="lazy"
                   />
                 </div>
 

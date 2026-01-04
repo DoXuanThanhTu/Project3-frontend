@@ -8,7 +8,7 @@ export default async function RootLayout({
   return (
     <div className={`flex flex-col min-h-screen`}>
       <Navbar />
-      <div className="grow mt-5">{children}</div>
+      <div className="grow">{children}</div>
     </div>
   );
 }

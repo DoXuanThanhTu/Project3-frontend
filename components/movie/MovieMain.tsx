@@ -7,8 +7,10 @@ import {
 } from "@/types/response.type";
 import { Heart, MessageCircle, Play, Plus, Share2 } from "lucide-react";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import MovieCard from "./MovieCard";
+import api from "@/lib/api";
+import useAuthStore from "@/stores/auth.store";
 
 interface MovieMainProps {
   movie: IMovieResponse;
@@ -24,6 +26,37 @@ interface Servers {
   latestEpisode?: IEpisodeResponse | null;
 }
 
+interface FavoriteResponse {
+  success: boolean;
+  data: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    favorites: Array<{
+      _id: string;
+      movieId: string;
+      title: {
+        en: string;
+        vi: string;
+      };
+      thumbnail: string;
+      poster: string;
+      banner: string;
+      type: string;
+      slug: {
+        en: string;
+        vi: string;
+      };
+      genres: string[];
+      ratingAvg: number;
+      totalViews: number;
+      favorites: number;
+      addedAt: string;
+    }>;
+  };
+}
+
 const MovieMain: React.FC<MovieMainProps> = ({
   movie,
   servers,
@@ -31,10 +64,44 @@ const MovieMain: React.FC<MovieMainProps> = ({
   sameFranchise = [],
 }) => {
   const [selectedServer, setSelectedServer] = useState<Servers>(servers[0]);
+  const user = useAuthStore((state) => state.user);
   console.log(selectedServer);
   const [activeTab, setActiveTab] = useState<
     "episodes" | "franchise" | "related"
   >("episodes");
+  const handleFollowToggle = () => {
+    if (user) {
+      const toogleFavorite = async () => {
+        const res = await api.post("/favorite", {
+          movieId: movie.id,
+        });
+        if (res.status === 200) {
+          setIsFavorite((prev) => !prev);
+        }
+      };
+      // TODO: Gọi API theo dõi phim
+      toogleFavorite();
+    }
+  };
+  const [isFavorite, setIsFavorite] = useState(false);
+  useEffect(() => {
+    const fetchFavoriteMovie = async () => {
+      try {
+        const res = await api.get<FavoriteResponse>(`/favorite/my-favorites`);
+        console.log("Favorites data:", res.data);
+
+        // Kiểm tra xem movie.id có tồn tại trong danh sách favorites không
+        const isMovieInFavorites = res.data.data.favorites.some(
+          (fav) => fav.movieId === movie.id
+        );
+
+        setIsFavorite(isMovieInFavorites);
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+      }
+    };
+    fetchFavoriteMovie();
+  }, [movie.id]);
 
   return (
     <div className="space-y-8">
@@ -75,8 +142,20 @@ const MovieMain: React.FC<MovieMainProps> = ({
         )}
 
         <div className="flex gap-3">
-          <ActionButton icon={<Heart />} label="Yêu thích" />
-          <ActionButton icon={<Plus />} label="Danh sách" />
+          {isFavorite ? (
+            <ActionButton
+              icon={<Heart fill="red" color="red" />}
+              label="Đã yêu thích"
+              onClick={handleFollowToggle}
+            />
+          ) : (
+            <ActionButton
+              icon={<Heart />}
+              label="Yêu thích"
+              onClick={handleFollowToggle}
+            />
+          )}
+          {/* <ActionButton icon={<Plus />} label="Danh sách" /> */}
           <ActionButton icon={<Share2 />} label="Chia sẻ" />
           <ActionButton icon={<MessageCircle />} label="Bình luận" />
         </div>
@@ -133,9 +212,9 @@ const MovieMain: React.FC<MovieMainProps> = ({
             </div>
 
             {/* Episodes Grid */}
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-              {selectedServer ? (
-                selectedServer.episodes.map((episode) => (
+            {selectedServer ? (
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+                {selectedServer.episodes.map((episode) => (
                   <Link
                     key={episode.slug}
                     href={`/watch/${movie.slug}?ep=${episode.episodeOrLabel}`}
@@ -148,11 +227,11 @@ const MovieMain: React.FC<MovieMainProps> = ({
                       {episode.title || 1}
                     </div> */}
                   </Link>
-                ))
-              ) : (
-                <p>Chưa có server</p>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="-mt-10">Chưa có tập phim hãy chờ nhé</p>
+            )}
           </div>
         )}
 
@@ -177,42 +256,16 @@ const MovieMain: React.FC<MovieMainProps> = ({
     </div>
   );
 };
-// const MovieCard: React.FC<{ movie: IMovieResponse }> = ({ movie }) => (
-//   <Link
-//     href={`/movie/${movie.slug}`}
-//     className="group overflow-hidden rounded-xl bg-gray-900/50 transition-all hover:scale-[1.02] hover:bg-gray-900"
-//   >
-//     <div className="relative aspect-[2/3] overflow-hidden">
-//       <img
-//         src={movie.poster || "/no_poster.png"}
-//         alt={movie.title}
-//         className="object-cover transition-transform group-hover:scale-105"
-//         sizes="(max-width: 768px) 50vw, 200px"
-//       />
-//       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-//       <div className="absolute bottom-2 left-2 right-2">
-//         <div className="flex items-center justify-between">
-//           <span className="rounded-full bg-black/70 px-2 py-1 text-xs font-medium text-yellow-400">
-//             ⭐ {movie.ratingAvg.toFixed(1)}
-//           </span>
-//           <span className="rounded-full bg-black/70 px-2 py-1 text-xs text-gray-300">
-//             👁 {formatNumber(movie.views)}
-//           </span>
-//         </div>
-//       </div>
-//     </div>
-//     <div className="p-3">
-//       <h3 className="line-clamp-2 text-sm font-medium text-white group-hover:text-purple-300">
-//         {movie.title}
-//       </h3>
-//     </div>
-//   </Link>
-// );
-const ActionButton: React.FC<{ icon: React.ReactNode; label: string }> = ({
-  icon,
-  label,
-}) => (
-  <button className="flex items-center gap-2 rounded-full bg-gray-900/50 px-4 py-2.5 text-sm text-gray-300 transition-all hover:bg-gray-800 hover:text-white">
+
+const ActionButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+}> = ({ icon, label, onClick }) => (
+  <button
+    onClick={onClick}
+    className="flex items-center gap-2 rounded-full bg-gray-900/50 px-4 py-2.5 text-sm text-gray-300 transition-all hover:bg-gray-800 hover:text-white"
+  >
     {icon}
     <span>{label}</span>
   </button>

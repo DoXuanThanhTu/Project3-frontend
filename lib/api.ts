@@ -29,14 +29,14 @@ api.interceptors.request.use((config) => {
     const raw = localStorage.getItem("app-storage");
     if (raw) {
       const appStorage = JSON.parse(raw);
-      const lang = appStorage?.state?.lang;
+      // const lang = appStorage?.state?.lang || "vi";
 
-      if (lang) {
-        config.params = {
-          ...(config.params ?? {}),
-          lang,
-        };
-      }
+      // if (lang) {
+      //   config.params = {
+      //     ...(config.params ?? {}),
+      //     lang,
+      //   };
+      // }
     }
   } catch (err) {
     console.error("Failed to parse app-storage", err);

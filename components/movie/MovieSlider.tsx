@@ -9,13 +9,15 @@ import "swiper/css/pagination";
 import Link from "next/link";
 import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
 import type { IMovieResponse } from "@/types/res.type";
+import Image from "next/image";
 
 type MovieSliderProps = {
   title: string;
   movies: IMovieResponse[];
+  link?: string;
 };
 
-const MovieSlider: React.FC<MovieSliderProps> = ({ title, movies }) => {
+const MovieSlider: React.FC<MovieSliderProps> = ({ title, movies, link }) => {
   const limitedMovies = movies.slice(0, 10);
   const showArrows = limitedMovies.length > 5;
 
@@ -108,11 +110,13 @@ const MovieSlider: React.FC<MovieSliderProps> = ({ title, movies }) => {
     <div className={`movie-slider-${uid} my-10 relative`}>
       <h2 className="text-2xl font-bold mb-6 text-white tracking-wide flex items-center">
         {title}
-        <Link href={`/movie`}>
-          <div className="ml-4 mt-1 hover:opacity-80 transition-opacity rounded-full border border-gray-600 w-8 h-8 inline-flex items-center justify-center">
-            <FaAngleRight />
-          </div>
-        </Link>
+        {link && (
+          <Link href={link}>
+            <div className="ml-4 mt-1 hover:opacity-80 transition-opacity rounded-full border border-gray-600 w-8 h-8 inline-flex items-center justify-center">
+              <FaAngleRight />
+            </div>
+          </Link>
+        )}
       </h2>
 
       <div className="relative w-full">
@@ -186,16 +190,22 @@ const MovieSlider: React.FC<MovieSliderProps> = ({ title, movies }) => {
                 <div className="bg-black rounded-lg shadow-md overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-xl">
                   <div className="w-full aspect-3/4 relative overflow-hidden">
                     {movie.thumbnail ? (
-                      <img
+                      <Image
                         src={movie.thumbnail}
                         alt={movie.title || "No title"}
                         className="object-cover"
+                        width={400}
+                        height={600}
+                        loading="lazy"
                       />
                     ) : (
-                      <img
+                      <Image
                         src="/no_thumb.png"
                         alt={movie.title || "No title"}
                         className="w-full h-full object-cover"
+                        width={400}
+                        height={600}
+                        loading="lazy"
                       />
                     )}
                   </div>

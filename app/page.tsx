@@ -17,6 +17,9 @@ export default function HomePage() {
   const { theme, lang } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [movies, setMovies] = useState<IMovieResponse[]>([]);
+  const [featured_movies, setFeaturedMovies] = useState<IMovieResponse[]>([]);
+  const [new_movies, setNewMovies] = useState<IMovieResponse[]>([]);
+  const [hot_movies, setHotMovies] = useState<IMovieResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const fetchData = async () => {
@@ -25,8 +28,21 @@ export default function HomePage() {
         setError(null);
         console.log(api);
         const res = await api.get("/movie");
-
+        const featuredMovies = await api.get("/flag/featured/movies");
+        const newMovies = await api.get("/movie/new");
+        const hotMovies = await api.get("/flag/hot/movies");
         setMovies(Array.isArray(res.data.data) ? res.data.data : []);
+        setFeaturedMovies(
+          Array.isArray(featuredMovies.data.data)
+            ? featuredMovies.data.data
+            : []
+        );
+        setNewMovies(
+          Array.isArray(newMovies.data.data) ? newMovies.data.data : []
+        );
+        setHotMovies(
+          Array.isArray(hotMovies.data.data) ? hotMovies.data.data : []
+        );
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
         setError("Không thể tải danh sách phim");
@@ -112,12 +128,22 @@ export default function HomePage() {
           </div>
           {/* Slider phim nổi bật - chỉ hiển thị khi có phim */}
           <MovieSlider
-            title={t("featured_movies") || "Phim nổi bật"}
-            movies={movies.slice(0, 10)}
+            title={"Phim nổi bật"}
+            movies={featured_movies.slice(0, 10)}
+            // link="/movie/featured"
           />
 
           {/* New Movies */}
-          <MovieSlider title="New Movies" movies={movies.slice(0, 10)} />
+          <MovieSlider
+            title="Phim mới"
+            movies={new_movies.slice(0, 10)}
+            // link="/movie/new"
+          />
+          <MovieSlider
+            title="Phim hot"
+            movies={hot_movies.slice(0, 10)}
+            // link="/movie/hot"
+          />
           {/* Comment Section */}
           <CommentList />
         </div>

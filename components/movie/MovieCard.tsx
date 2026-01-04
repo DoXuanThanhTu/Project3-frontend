@@ -32,15 +32,17 @@ export default function MovieCard({ movie }: { movie: IMovieResponse }) {
   const safeGenres = Array.isArray(genres) ? genres : [];
 
   return (
-    <Link href={`/phim/${safeSlug}`} className="block">
+    <Link href={`/movie/${safeSlug}`} className="block">
       <div className="group cursor-pointer">
         <div className="relative aspect-2/3 rounded-lg overflow-hidden bg-gray-800 mb-3">
           {safeThumbnail ? (
-            <img
+            <Image
               src={safeThumbnail}
               alt={safeTitle || "Movie thumbnail"}
-              // fill
               className="object-cover group-hover:scale-105 transition-transform duration-300 w-full h-full"
+              width={400}
+              height={600}
+              loading="lazy"
               // onError={(e) => {
               //   // Fallback khi ảnh lỗi
               //   const target = e.target as HTMLImageElement;
@@ -112,7 +114,7 @@ export default function MovieCard({ movie }: { movie: IMovieResponse }) {
                     key={index}
                     className="text-xs px-2 py-0.5 bg-gray-800 rounded-full text-gray-300"
                   >
-                    {genre.name}
+                    {genre.title}
                   </span>
                 );
               })}

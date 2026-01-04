@@ -109,7 +109,7 @@ export const TopSlide: React.FC<TopSlideProps> = ({
                             href={`/genre/${g.name}`}
                             className="px-2 py-1 bg-white/20 rounded hover:bg-white/30 transition"
                           >
-                            {g.name}
+                            {g.title}
                           </Link>
                         ))}
                     </div>
@@ -126,12 +126,12 @@ export const TopSlide: React.FC<TopSlideProps> = ({
                       >
                         <Play size={18} /> Xem phim
                       </Link>
-                      <button className="hover:text-red-400">
+                      {/* <button className="hover:text-red-400">
                         <Heart size={22} />
                       </button>
                       <button className="hover:text-red-400">
                         <Info size={22} />
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 </div>
@@ -158,12 +158,13 @@ export const TopSlide: React.FC<TopSlideProps> = ({
                 className="w-27.5! h-15! mt-2 ml-0.5"
                 onClick={() => mainSwiper?.slideTo(i)}
               >
-                <img
+                <Image
                   src={m.poster || m.thumbnail || "/no_poster.png"}
                   alt={m.title || "No title"}
                   className="w-full h-full object-cover rounded-lg ring-2 ring-transparent hover:ring-red-500 transition"
-                  // width={1000}
-                  // height={1000}
+                  width={1000}
+                  height={1000}
+                  loading="lazy"
                 />
               </SwiperSlide>
             ))}

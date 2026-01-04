@@ -140,22 +140,12 @@ export default function SearchPage() {
           if (filters.type) {
             params.set("type", filters.type);
           }
-          //   if (filters.sortBy) {
-          //     params.set("sort_field", filters.sortBy);
-          //     params.set("sort_type", filters.sortOrder || "desc");
-          //   } else {
-          //     params.set(
-          //       "sort_field",
-          //       searchTerm ? "relevance" : "modified.time"
-          //     );
-          //     params.set("sort_type", "desc");
-          //   }
 
           const url = searchTerm.trim()
-            ? `${MOVIE_API_URL}/search/${encodeURIComponent(
+            ? `${MOVIE_API_URL}/movie/search/${encodeURIComponent(
                 searchTerm
               )}?${params.toString()}`
-            : `${MOVIE_API_URL}/phim?${params.toString()}`;
+            : `${MOVIE_API_URL}/movie?${params.toString()}`;
 
           console.log("Fetching search URL:", url);
 
@@ -329,13 +319,13 @@ export default function SearchPage() {
             {query ? `Tìm kiếm: "${query}"` : "Tìm kiếm phim"}
           </h1>
           <p className="text-gray-400">
-            {totalResults > 0
+            {/* {totalResults > 0
               ? `Tìm thấy ${totalResults} kết quả${
                   query ? ` cho "${query}"` : ""
                 }`
               : query
               ? "Không tìm thấy kết quả nào"
-              : "Nhập từ khóa để bắt đầu tìm kiếm"}
+              : "Nhập từ khóa để bắt đầu tìm kiếm"} */}
           </p>
         </div>
 
@@ -403,40 +393,6 @@ export default function SearchPage() {
                     </span>
                   )}
                 </button>
-
-                {/* Quick Filters */}
-                <div className="hidden lg:flex items-center gap-2">
-                  <span className="text-gray-400">Sắp xếp:</span>
-                  <select
-                    value={
-                      activeFilters.sortBy ||
-                      (query ? "relevance" : "modified.time")
-                    }
-                    onChange={(e) =>
-                      applyFilters({ ...activeFilters, sortBy: e.target.value })
-                    }
-                    className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="relevance">Liên quan nhất</option>
-                    <option value="modified.time">Mới nhất</option>
-                    <option value="year">Năm sản xuất</option>
-                    <option value="rating">Đánh giá cao</option>
-                    <option value="views">Xem nhiều</option>
-                  </select>
-
-                  <button
-                    onClick={() =>
-                      applyFilters({
-                        ...activeFilters,
-                        sortOrder:
-                          activeFilters.sortOrder === "asc" ? "asc" : "desc",
-                      })
-                    }
-                    className="bg-gray-800 border border-gray-700 rounded-lg p-1.5 hover:bg-gray-700 transition-colors"
-                  >
-                    <Sliders className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
 
               {/* Active Filters */}
@@ -501,15 +457,15 @@ export default function SearchPage() {
                     <li>• Kiểm tra lại chính tả</li>
                     <li>• Thử từ khóa ngắn hơn hoặc khác</li>
                     <li>• Tìm kiếm với tên tiếng Anh</li>
-                    <li>• Xem các phim đang trending</li>
+                    {/* <li>• Xem các phim đang trending</li> */}
                   </ul>
-                  <button
+                  {/* <button
                     onClick={() => router.push("/phim-hot")}
                     className="mt-4 inline-flex items-center gap-2 bg-linear-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
                   >
                     <Play className="w-4 h-4" />
                     Xem phim đang hot
-                  </button>
+                  </button> */}
                 </div>
               </div>
             )}
@@ -560,12 +516,12 @@ export default function SearchPage() {
           </div>
 
           {/* Filter Sidebar */}
-          <FilterSidebar
+          {/* <FilterSidebar
             isOpen={showFilters}
             onClose={() => setShowFilters(false)}
             activeFilters={activeFilters}
             onApplyFilters={applyFilters}
-          />
+          /> */}
         </div>
       </div>
 

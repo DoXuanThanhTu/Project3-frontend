@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Hls from "hls.js";
 import {
   Loader2,
@@ -18,6 +19,8 @@ import {
   useState,
 } from "react";
 import MenuController from "./MenuController";
+import api from "@/lib/api";
+import useAuthStore from "@/stores/auth.store";
 
 interface PlayerProps {
   linkEmbed?: string;
@@ -28,7 +31,9 @@ interface PlayerProps {
     controlsBg?: string;
   };
   movieSlug?: string;
+  movieId?: string;
   episode?: string;
+  episodeId?: string;
   onNext?: () => void;
   onEnded?: () => void;
   setting?: {
@@ -43,11 +48,14 @@ interface PlayerProps {
 }
 
 interface HistoryItem {
-  videoId: string;
+  videoKey: string;
   currentTime: number;
   duration: number;
   timestamp: number;
   expires: number;
+  synced?: boolean;
+  movieId?: string;
+  episodeId?: string;
 }
 
 const defaultColors = {
@@ -59,6 +67,7 @@ const defaultColors = {
 
 const LOCAL_KEY = "playerSettings";
 const HISTORY_KEY = "playerHistory";
+const VIEW_COUNTED_KEY = "viewCounted";
 
 export default function Player({
   linkEmbed,
@@ -68,19 +77,460 @@ export default function Player({
   setting: propSetting,
   onSettingChange,
   movieSlug,
+  movieId,
   episode,
+  episodeId,
 }: PlayerProps) {
   const playerColors = { ...defaultColors, ...colors };
+  const user = useAuthStore((state) => state.user);
+  const [hasCountedView, setHasCountedView] = useState(false);
+  const watchTimeRef = useRef(0);
+  const lastSaveTimeRef = useRef(0);
+  const viewCountedRef = useRef(false);
 
-  // Function to generate a unique ID for the video
-  const generateVideoId = useCallback((url: string) => {
+  // Refs cho việc đồng bộ
+  const isSyncingRef = useRef(false);
+  const syncQueueRef = useRef<Set<string>>(new Set()); // Track các videoKey đang được đồng bộ
+
+  // Function để tạo key duy nhất cho video (kết hợp movieId và episodeId)
+  const generateViewKey = useCallback((movieId: string, episodeId?: string) => {
+    if (!movieId) return null;
+    return episodeId ? `${movieId}_${episodeId}` : movieId;
+  }, []);
+
+  // Function để tạo key cho history (dùng movieSlug và episode)
+  const generateHistoryKey = useCallback(
+    (movieSlug?: string, episode?: string) => {
+      if (!movieSlug) return null;
+      return episode ? `${movieSlug}-${episode}` : movieSlug;
+    },
+    []
+  );
+
+  /* =======================
+     SYNC HISTORY FUNCTIONS - Đơn giản hóa
+     ======================= */
+
+  // Lấy danh sách lịch sử chưa đồng bộ từ localStorage
+  const getUnsyncedHistory = useCallback((): HistoryItem[] => {
     try {
-      // Use URL pathname or full URL as base for ID
-      const urlObj = new URL(url);
-      return `${urlObj.hostname}${urlObj.pathname}`.replace(/\/$/, "");
-    } catch {
-      // Fallback to the URL itself if it's not a valid URL
-      return url;
+      const historyStr = localStorage.getItem(HISTORY_KEY);
+      if (!historyStr) return [];
+
+      const history: HistoryItem[] = JSON.parse(historyStr);
+      const now = Date.now();
+
+      // Lấy các item chưa đồng bộ, còn hạn, và có đủ thông tin
+      return history.filter(
+        (item) => !item.synced && item.movieId && item.expires > now
+      );
+    } catch (error) {
+      console.error("Error getting unsynced history:", error);
+      return [];
+    }
+  }, []);
+
+  // Đồng bộ một item lịch sử lên server
+  const syncHistoryItem = useCallback(
+    async (item: HistoryItem): Promise<boolean> => {
+      if (!user || !item.movieId || syncQueueRef.current.has(item.videoKey)) {
+        return false;
+      }
+
+      // Đánh dấu đang đồng bộ
+      syncQueueRef.current.add(item.videoKey);
+      isSyncingRef.current = true;
+
+      try {
+        const response = await api.post("/watchHistory", {
+          movieId: item.movieId,
+          episodeId: item.episodeId || null,
+          currentTime: Math.floor(item.currentTime),
+          duration: Math.floor(item.duration),
+          watchedAt: new Date(item.timestamp).toISOString(),
+        });
+
+        if (response.status === 200 || response.status === 201) {
+          console.log("Successfully synced history item:", item.videoKey);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("Error syncing history item:", error);
+        return false;
+      } finally {
+        // Xóa khỏi queue sau khi đồng bộ xong
+        syncQueueRef.current.delete(item.videoKey);
+        isSyncingRef.current = false;
+      }
+    },
+    [user]
+  );
+
+  // Cập nhật trạng thái đồng bộ trong localStorage
+  const updateSyncStatus = useCallback((videoKey: string, synced: boolean) => {
+    try {
+      const historyStr = localStorage.getItem(HISTORY_KEY);
+      if (!historyStr) return;
+
+      const history: HistoryItem[] = JSON.parse(historyStr);
+      const updatedHistory = history.map((item) => {
+        if (item.videoKey === videoKey) {
+          return { ...item, synced };
+        }
+        return item;
+      });
+
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+    } catch (error) {
+      console.error("Error updating sync status:", error);
+    }
+  }, []);
+
+  // Hàm đồng bộ tất cả lịch sử khi user đăng nhập
+  const syncAllHistoryOnLogin = useCallback(async () => {
+    if (!user || isSyncingRef.current) return;
+
+    isSyncingRef.current = true;
+    const unsyncedItems = getUnsyncedHistory();
+
+    if (unsyncedItems.length === 0) {
+      console.log("No unsynced history items to sync");
+      isSyncingRef.current = false;
+      return;
+    }
+
+    console.log(
+      `Found ${unsyncedItems.length} unsynced history items, syncing...`
+    );
+
+    // Đồng bộ từng item một, tuần tự
+    for (const item of unsyncedItems) {
+      if (!user) break; // Dừng nếu user logout trong khi đang đồng bộ
+
+      try {
+        const success = await syncHistoryItem(item);
+        if (success) {
+          updateSyncStatus(item.videoKey, true);
+          console.log("Synced:", item.videoKey);
+        } else {
+          console.log("Failed to sync:", item.videoKey);
+        }
+
+        // Nghỉ một chút giữa các request để tránh quá tải
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      } catch (error) {
+        console.error("Error syncing item:", item.videoKey, error);
+        break;
+      }
+    }
+
+    isSyncingRef.current = false;
+    console.log("All history sync completed");
+  }, [user, getUnsyncedHistory, syncHistoryItem, updateSyncStatus]);
+
+  // Hàm đồng bộ một item ngay lập tức (cho lịch sử mới)
+  const syncSingleItemImmediately = useCallback(
+    async (item: HistoryItem) => {
+      if (!user || !item.movieId) return false;
+
+      try {
+        const success = await syncHistoryItem(item);
+        if (success) {
+          updateSyncStatus(item.videoKey, true);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("Failed to sync item immediately:", error);
+        return false;
+      }
+    },
+    [user, syncHistoryItem, updateSyncStatus]
+  );
+
+  // Khi user đăng nhập, đồng bộ tất cả lịch sử cũ
+  useEffect(() => {
+    if (user) {
+      console.log("User logged in, syncing all unsynced history...");
+      syncAllHistoryOnLogin();
+    }
+  }, [user, syncAllHistoryOnLogin]);
+
+  /* =======================
+     VIEW COUNTING FUNCTIONS
+     ======================= */
+
+  const checkIfViewCounted = useCallback(
+    (movieId?: string, episodeId?: string) => {
+      if (!movieId) return true;
+
+      const viewKey = generateViewKey(movieId as string, episodeId);
+      if (!viewKey) return true;
+
+      try {
+        const countedData = localStorage.getItem(VIEW_COUNTED_KEY);
+        if (!countedData) return false;
+
+        const countedItems = JSON.parse(countedData);
+        const now = Date.now();
+        const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+        const existingItem = countedItems.find(
+          (item: any) => item.viewKey === viewKey && item.timestamp > oneDayAgo
+        );
+
+        return !!existingItem;
+      } catch {
+        return false;
+      }
+    },
+    [generateViewKey]
+  );
+
+  const markViewAsCounted = useCallback(
+    (movieId: string, episodeId?: string) => {
+      if (!movieId) return;
+
+      const viewKey = generateViewKey(movieId, episodeId);
+      if (!viewKey) return;
+
+      try {
+        const countedData = localStorage.getItem(VIEW_COUNTED_KEY);
+        let countedItems = countedData ? JSON.parse(countedData) : [];
+
+        const now = Date.now();
+        const oneDayAgo = now - 24 * 60 * 60 * 1000;
+        countedItems = countedItems.filter(
+          (item: any) => item.timestamp > oneDayAgo
+        );
+
+        countedItems.push({
+          viewKey,
+          movieId,
+          episodeId,
+          timestamp: now,
+          expires: now + 24 * 60 * 60 * 1000,
+        });
+
+        countedItems = countedItems.slice(-100);
+
+        localStorage.setItem(VIEW_COUNTED_KEY, JSON.stringify(countedItems));
+        viewCountedRef.current = true;
+        setHasCountedView(true);
+      } catch (error) {
+        console.error("Error marking view as counted:", error);
+      }
+    },
+    [generateViewKey]
+  );
+
+  const incrementView = useCallback(async () => {
+    if (!movieId || viewCountedRef.current) return;
+
+    try {
+      if (checkIfViewCounted(movieId, episodeId)) {
+        viewCountedRef.current = true;
+        setHasCountedView(true);
+        return;
+      }
+
+      let sessionId = localStorage.getItem("player_session_id");
+      if (!sessionId) {
+        sessionId = "sess_" + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem("player_session_id", sessionId);
+      }
+
+      const response = await api.post("/view/increment", {
+        movieId: movieId,
+        episodeId: episodeId,
+        sessionId: sessionId,
+        watchDuration: 30,
+        viewType: episodeId ? "episode" : "movie",
+        isUnique: true,
+      });
+
+      if (response) {
+        const data = response.data;
+        console.log("View incremented:", data);
+
+        markViewAsCounted(movieId, episodeId);
+      } else {
+        console.error("Failed to increment view:", response);
+      }
+    } catch (error) {
+      console.error("Error incrementing view:", error);
+    }
+  }, [movieId, episodeId, checkIfViewCounted, markViewAsCounted]);
+
+  /* =======================
+     HISTORY FUNCTIONS - Đã cập nhật để đồng bộ ngay
+     ======================= */
+
+  const saveHistoryToLocal = useCallback(
+    (currentTime: number, duration: number) => {
+      const historyKey = generateHistoryKey(movieSlug, episode);
+      if (!historyKey || duration <= 0) return;
+
+      try {
+        const existingHistory = localStorage.getItem(HISTORY_KEY);
+        let history: HistoryItem[] = existingHistory
+          ? JSON.parse(existingHistory)
+          : [];
+
+        const now = Date.now();
+        const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+        // Dọn dẹp history cũ
+        history = history.filter((item) => item.timestamp > sevenDaysAgo);
+
+        const existingIndex = history.findIndex(
+          (item) => item.videoKey === historyKey
+        );
+
+        const historyItem: HistoryItem = {
+          videoKey: historyKey,
+          currentTime,
+          duration,
+          timestamp: now,
+          expires: now + 7 * 24 * 60 * 60 * 1000,
+          synced: false, // Mặc định chưa đồng bộ
+          movieId,
+          episodeId,
+        };
+
+        let shouldSyncImmediately = false;
+
+        if (existingIndex >= 0) {
+          // Nếu đã tồn tại, cập nhật nếu thời gian khác đáng kể (> 10 giây)
+          const existingItem = history[existingIndex];
+          const timeDifference = Math.abs(
+            existingItem.currentTime - currentTime
+          );
+
+          if (timeDifference > 10 || now - existingItem.timestamp > 30000) {
+            history[existingIndex] = historyItem;
+            shouldSyncImmediately = true;
+          }
+        } else {
+          // Item mới, thêm vào
+          history.push(historyItem);
+          shouldSyncImmediately = true;
+        }
+
+        // Sắp xếp và giới hạn số lượng
+        history.sort((a, b) => b.timestamp - a.timestamp);
+        history = history.slice(0, 50);
+
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+
+        console.log("History saved locally:", {
+          historyKey,
+          currentTime: Math.floor(currentTime),
+          duration: Math.floor(duration),
+          shouldSync: shouldSyncImmediately,
+        });
+
+        // Nếu có user và cần đồng bộ ngay, thực hiện đồng bộ
+        if (user && shouldSyncImmediately && movieId) {
+          // Sử dụng setTimeout để không block UI
+          setTimeout(() => {
+            syncSingleItemImmediately(historyItem);
+          }, 500); // Chờ 0.5 giây để tránh spam request
+        }
+      } catch (error) {
+        console.error("Error saving history:", error);
+      }
+    },
+    [
+      movieSlug,
+      episode,
+      generateHistoryKey,
+      movieId,
+      episodeId,
+      user,
+      syncSingleItemImmediately,
+    ]
+  );
+
+  const getHistoryFromLocal = useCallback(() => {
+    const historyKey = generateHistoryKey(movieSlug, episode);
+    if (!historyKey) return null;
+
+    try {
+      const existingHistory = localStorage.getItem(HISTORY_KEY);
+      if (!existingHistory) return null;
+
+      const history: HistoryItem[] = JSON.parse(existingHistory);
+      const now = Date.now();
+
+      const item = history.find((item) => item.videoKey === historyKey);
+      if (!item) return null;
+
+      if (now > item.expires) {
+        const filteredHistory = history.filter(
+          (i) => i.videoKey !== historyKey
+        );
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(filteredHistory));
+        return null;
+      }
+
+      return item;
+    } catch (error) {
+      console.error("Error reading history:", error);
+      return null;
+    }
+  }, [movieSlug, episode, generateHistoryKey]);
+
+  // Xóa các history items cũ đã hết hạn
+  const cleanupOldHistory = useCallback(() => {
+    try {
+      const existingHistory = localStorage.getItem(HISTORY_KEY);
+      if (!existingHistory) return;
+
+      const history: HistoryItem[] = JSON.parse(existingHistory);
+      const now = Date.now();
+      const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+      const validHistory = history.filter(
+        (item) => item.timestamp > sevenDaysAgo
+      );
+
+      if (validHistory.length !== history.length) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(validHistory));
+        console.log(
+          `Cleaned up ${
+            history.length - validHistory.length
+          } expired history items`
+        );
+      }
+    } catch (error) {
+      console.error("Error cleaning up history:", error);
+    }
+  }, []);
+
+  // Chạy cleanup khi component mount
+  useEffect(() => {
+    cleanupOldHistory();
+  }, [cleanupOldHistory]);
+
+  const startHistoryUpdateInterval = useCallback(() => {
+    if (historyUpdateInterval.current) {
+      clearInterval(historyUpdateInterval.current);
+    }
+
+    historyUpdateInterval.current = setInterval(() => {
+      const video = videoRef.current;
+      if (video && !isSeekingRef.current) {
+        saveHistoryToLocal(video.currentTime, video.duration);
+      }
+    }, 30000);
+  }, [saveHistoryToLocal]);
+
+  const stopHistoryUpdateInterval = useCallback(() => {
+    if (historyUpdateInterval.current) {
+      clearInterval(historyUpdateInterval.current);
+      historyUpdateInterval.current = null;
     }
   }, []);
 
@@ -119,7 +569,6 @@ export default function Player({
 
   // History update interval ref
   const historyUpdateInterval = useRef<NodeJS.Timeout | null>(null);
-  // Realtime update flag
   const realtimeUpdateRef = useRef(false);
 
   // value refs for stable saving
@@ -180,134 +629,6 @@ export default function Player({
 
   const { rememberPlaybackState, restorePlaybackState } =
     usePlaybackMemory(videoRef);
-
-  /* =======================
-     HISTORY FUNCTIONS
-     ======================= */
-  const saveHistoryToLocal = useCallback(
-    (videoId: string, currentTime: number, duration: number) => {
-      if (!videoId || duration <= 0) return;
-
-      try {
-        // Get existing history
-        const existingHistory = localStorage.getItem(HISTORY_KEY);
-        let history: HistoryItem[] = existingHistory
-          ? JSON.parse(existingHistory)
-          : [];
-
-        // Clean expired items (older than 7 days)
-        const now = Date.now();
-        const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-        history = history.filter((item) => item.timestamp > sevenDaysAgo);
-
-        // Find existing item for this video
-        const existingIndex = history.findIndex(
-          (item) => item.videoId === videoId
-        );
-
-        // Create new history item
-        const historyItem: HistoryItem = {
-          videoId,
-          currentTime,
-          duration,
-          timestamp: now,
-          expires: now + 7 * 24 * 60 * 60 * 1000, // 7 days from now
-        };
-
-        // Update or add the item
-        if (existingIndex >= 0) {
-          history[existingIndex] = historyItem;
-        } else {
-          history.push(historyItem);
-        }
-
-        // Keep only the latest 50 items to prevent storage overflow
-        history.sort((a, b) => b.timestamp - a.timestamp);
-        history = history.slice(0, 50);
-
-        // Save to localStorage
-        localStorage.setItem(
-          `${movieSlug}-${episode}`,
-          JSON.stringify(history)
-        );
-
-        console.log("History saved:", { videoId, currentTime, duration });
-      } catch (error) {
-        console.error("Error saving history:", error);
-      }
-    },
-    []
-  );
-
-  const getHistoryFromLocal = useCallback(
-    (videoId: string): HistoryItem | null => {
-      try {
-        const existingHistory = localStorage.getItem(HISTORY_KEY);
-        if (!existingHistory) return null;
-
-        const history: HistoryItem[] = JSON.parse(existingHistory);
-        const now = Date.now();
-
-        // Find the item and check if it's expired
-        const item = history.find((item) => item.videoId === videoId);
-        if (!item) return null;
-
-        // Check if expired
-        if (now > item.expires) {
-          // Remove expired item
-          const filteredHistory = history.filter((i) => i.videoId !== videoId);
-          localStorage.setItem(HISTORY_KEY, JSON.stringify(filteredHistory));
-          return null;
-        }
-
-        return item;
-      } catch (error) {
-        console.error("Error reading history:", error);
-        return null;
-      }
-    },
-    []
-  );
-
-  const startHistoryUpdateInterval = useCallback(
-    (videoId: string) => {
-      // Clear any existing interval
-      if (historyUpdateInterval.current) {
-        clearInterval(historyUpdateInterval.current);
-      }
-
-      // Start new interval (update every 30 seconds)
-      historyUpdateInterval.current = setInterval(() => {
-        const video = videoRef.current;
-        if (video && videoId && !isSeekingRef.current) {
-          saveHistoryToLocal(videoId, video.currentTime, video.duration);
-        }
-      }, 30000); // 30 seconds
-    },
-    [saveHistoryToLocal]
-  );
-
-  const stopHistoryUpdateInterval = useCallback(() => {
-    if (historyUpdateInterval.current) {
-      clearInterval(historyUpdateInterval.current);
-      historyUpdateInterval.current = null;
-    }
-  }, []);
-
-  const updateHistoryRealtime = useCallback(
-    (videoId: string) => {
-      const video = videoRef.current;
-      if (
-        video &&
-        videoId &&
-        !isSeekingRef.current &&
-        realtimeUpdateRef.current
-      ) {
-        saveHistoryToLocal(videoId, video.currentTime, video.duration);
-      }
-    },
-    [saveHistoryToLocal]
-  );
 
   /* =======================
      keep refs in sync with state
@@ -412,6 +733,7 @@ export default function Player({
   /* =======================
      HLS Initialization & cleanup
      ======================= */
+
   const tryFlushHlsBuffer = useCallback(() => {
     const hls = hlsRef.current as any;
     if (!hls) return;
@@ -432,25 +754,25 @@ export default function Player({
   }, []);
 
   const resetUiForNewSource = useCallback(() => {
-    // timeline
+    viewCountedRef.current = false;
+    setHasCountedView(false);
+    watchTimeRef.current = 0;
+    lastSaveTimeRef.current = 0;
+
     setProgress(0);
     setBuffered(0);
     setCurrentTime(0);
     setDuration(0);
 
-    // playback
     setIsPlaying(false);
     setIsLoading(true);
 
-    // menu / control
     setShowSettings(false);
     setSettingsView("main");
 
-    // quality
     setQualities([]);
     setCurrentQuality("auto");
 
-    // stop history interval for previous video
     stopHistoryUpdateInterval();
   }, [stopHistoryUpdateInterval]);
 
@@ -504,7 +826,6 @@ export default function Player({
       isSwitchingSourceRef.current = true;
       startTransition(() => setIsLoading(true));
 
-      // destroy previous
       if (hlsRef.current) {
         try {
           hlsRef.current.destroy();
@@ -512,11 +833,10 @@ export default function Player({
         hlsRef.current = null;
       }
 
-      // Generate video ID for history
-      const videoId = generateVideoId(src);
+      viewCountedRef.current = checkIfViewCounted(movieId, episodeId);
+      setHasCountedView(viewCountedRef.current);
 
-      // Load history for this video
-      const historyItem = getHistoryFromLocal(videoId);
+      const historyItem = getHistoryFromLocal();
 
       if (Hls.isSupported()) {
         const hls = new Hls({
@@ -577,16 +897,13 @@ export default function Player({
           else if (propSettingRef.current)
             applyPropSettings(propSettingRef.current);
 
-          // Apply history if available
-          if (historyItem && videoId) {
+          if (historyItem) {
             const targetTime = Math.min(
               historyItem.currentTime,
               video.duration || historyItem.duration || 0
             );
 
-            // Only apply if video has valid duration and time is reasonable
             if (video.duration && video.duration > 0 && targetTime > 0) {
-              // Don't seek to the very end (last 5 seconds)
               if (targetTime < video.duration - 5) {
                 setTimeout(() => {
                   video.currentTime = targetTime;
@@ -595,13 +912,13 @@ export default function Player({
                   console.log("Restored from history:", {
                     targetTime,
                     duration: video.duration,
+                    historyKey: historyItem.videoKey,
                   });
                 }, 500);
               }
             }
           }
 
-          // Update duration từ video element nếu có
           if (video.duration && video.duration !== Infinity) {
             setDuration(video.duration);
           }
@@ -609,8 +926,7 @@ export default function Player({
           setIsLoading(false);
           isSwitchingSourceRef.current = false;
 
-          // Start history update interval
-          startHistoryUpdateInterval(videoId);
+          startHistoryUpdateInterval();
 
           if (propSettingRef.current?.autoPlay) {
             video.play().catch(() => {});
@@ -637,8 +953,7 @@ export default function Player({
           const saved = readSettingsFromLocal();
           if (saved) applySavedSettings(saved);
 
-          // Apply history if available
-          if (historyItem && videoId) {
+          if (historyItem) {
             const targetTime = Math.min(
               historyItem.currentTime,
               video.duration || historyItem.duration || 0
@@ -666,8 +981,7 @@ export default function Player({
           setIsLoading(false);
           isSwitchingSourceRef.current = false;
 
-          // Start history update interval
-          startHistoryUpdateInterval(videoId);
+          startHistoryUpdateInterval();
         };
 
         video.addEventListener("loadedmetadata", onLoadedMeta, { once: true });
@@ -694,9 +1008,11 @@ export default function Player({
       applyPropSettings,
       readSettingsFromLocal,
       parseDurationFromManifest,
-      generateVideoId,
       getHistoryFromLocal,
       startHistoryUpdateInterval,
+      checkIfViewCounted,
+      movieId,
+      episodeId,
     ]
   );
 
@@ -728,6 +1044,70 @@ export default function Player({
     stopHistoryUpdateInterval,
   ]);
 
+  // Effect để theo dõi thời gian xem và tăng view sau 30 giây
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !movieId || hasCountedView) return;
+
+    let interval: NodeJS.Timeout;
+
+    const startWatching = () => {
+      watchTimeRef.current = 0;
+      lastSaveTimeRef.current = video.currentTime;
+
+      interval = setInterval(() => {
+        if (video.paused || hasCountedView || !movieId) return;
+
+        const currentTime = video.currentTime;
+        const delta = Math.abs(currentTime - lastSaveTimeRef.current);
+
+        if (delta < 10) {
+          watchTimeRef.current += delta;
+        }
+
+        lastSaveTimeRef.current = currentTime;
+
+        if (watchTimeRef.current >= 30 && !viewCountedRef.current) {
+          console.log("Đã xem được 30 giây, tăng view...");
+          incrementView();
+          clearInterval(interval);
+        }
+      }, 1000);
+    };
+
+    const stopWatching = () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+
+    video.addEventListener("play", startWatching);
+    video.addEventListener("pause", stopWatching);
+    video.addEventListener("seeked", () => {
+      lastSaveTimeRef.current = video.currentTime;
+    });
+
+    return () => {
+      video.removeEventListener("play", startWatching);
+      video.removeEventListener("pause", stopWatching);
+      video.removeEventListener("seeked", () => {});
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [movieId, episodeId, hasCountedView, incrementView]);
+
+  // Reset view tracking khi movieId hoặc episodeId thay đổi
+  useEffect(() => {
+    if (movieId) {
+      const alreadyCounted = checkIfViewCounted(movieId, episodeId);
+      viewCountedRef.current = alreadyCounted;
+      setHasCountedView(alreadyCounted);
+      watchTimeRef.current = 0;
+      lastSaveTimeRef.current = 0;
+    }
+  }, [movieId, episodeId, checkIfViewCounted]);
+
   // cleanup on unmount
   useEffect(() => {
     return () => {
@@ -744,6 +1124,7 @@ export default function Player({
   /* =======================
      Video event wiring
      ======================= */
+
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -768,7 +1149,6 @@ export default function Player({
     const v = videoRef.current;
     if (!v || !linkEmbed) return;
 
-    const videoId = generateVideoId(linkEmbed);
     let updateTimeout: NodeJS.Timeout | null = null;
 
     const updateProgress = () => {
@@ -776,12 +1156,11 @@ export default function Player({
       setProgress((v.currentTime / (v.duration || 1)) * 100);
       setCurrentTime(v.currentTime);
 
-      // Update history in realtime (debounced)
-      if (realtimeUpdateRef.current && videoId) {
+      if (realtimeUpdateRef.current) {
         if (updateTimeout) clearTimeout(updateTimeout);
         updateTimeout = setTimeout(() => {
-          saveHistoryToLocal(videoId, v.currentTime, v.duration);
-        }, 1000); // Debounce 1 second
+          saveHistoryToLocal(v.currentTime, v.duration);
+        }, 1000);
       }
 
       if (v.duration && v.duration !== Infinity && v.duration !== duration) {
@@ -797,12 +1176,8 @@ export default function Player({
     };
 
     const handlePlayStart = () => {
-      if (videoId) {
-        // Save history when video starts playing
-        saveHistoryToLocal(videoId, v.currentTime, v.duration);
-        // Enable realtime updates
-        realtimeUpdateRef.current = true;
-      }
+      saveHistoryToLocal(v.currentTime, v.duration);
+      realtimeUpdateRef.current = true;
     };
 
     v.addEventListener("timeupdate", updateProgress);
@@ -815,7 +1190,7 @@ export default function Player({
       v.removeEventListener("play", handlePlayStart);
       if (updateTimeout) clearTimeout(updateTimeout);
     };
-  }, [duration, linkEmbed, generateVideoId, saveHistoryToLocal]);
+  }, [duration, saveHistoryToLocal]);
 
   useEffect(() => {
     const onFsChange = () => {
@@ -835,12 +1210,8 @@ export default function Player({
       v.play().catch(() => {});
       setIsPlaying(true);
 
-      // Save history when play starts
-      if (linkEmbed) {
-        const videoId = generateVideoId(linkEmbed);
-        saveHistoryToLocal(videoId, v.currentTime, v.duration);
-        realtimeUpdateRef.current = true;
-      }
+      saveHistoryToLocal(v.currentTime, v.duration);
+      realtimeUpdateRef.current = true;
     } else {
       v.pause();
       setIsPlaying(false);
@@ -848,7 +1219,7 @@ export default function Player({
     }
 
     saveSettingsToLocal();
-  }, [saveSettingsToLocal, linkEmbed, generateVideoId, saveHistoryToLocal]);
+  }, [saveSettingsToLocal, saveHistoryToLocal]);
 
   const handleSeekStart = useCallback(
     (e: React.PointerEvent<HTMLInputElement>) => {
@@ -857,7 +1228,7 @@ export default function Player({
       pendingSeekValueRef.current = Number(
         (e.target as HTMLInputElement).value
       );
-      realtimeUpdateRef.current = false; // Disable realtime updates during seeking
+      realtimeUpdateRef.current = false;
     },
     [isPlaying]
   );
@@ -921,11 +1292,7 @@ export default function Player({
         if (!isSeekingRef.current) setIsPlaying(!video.paused);
         saveSettingsToLocal({ currentTime: video.currentTime });
 
-        // Save history after seeking
-        if (linkEmbed) {
-          const videoId = generateVideoId(linkEmbed);
-          saveHistoryToLocal(videoId, video.currentTime, video.duration);
-        }
+        saveHistoryToLocal(video.currentTime, video.duration);
 
         return;
       }
@@ -955,19 +1322,9 @@ export default function Player({
       setIsLoading(false);
       saveSettingsToLocal({ currentTime: video.currentTime });
 
-      // Save history after seeking
-      if (linkEmbed) {
-        const videoId = generateVideoId(linkEmbed);
-        saveHistoryToLocal(videoId, video.currentTime, video.duration);
-      }
+      saveHistoryToLocal(video.currentTime, video.duration);
     },
-    [
-      tryFlushHlsBuffer,
-      saveSettingsToLocal,
-      linkEmbed,
-      generateVideoId,
-      saveHistoryToLocal,
-    ]
+    [tryFlushHlsBuffer, saveSettingsToLocal, saveHistoryToLocal]
   );
 
   const handleSeekEnd = useCallback(
@@ -985,7 +1342,7 @@ export default function Player({
       setCurrentTime(newTime);
       safeSeek(newTime).then(() => {
         setIsPlaying(seekWasPlayingRef.current);
-        realtimeUpdateRef.current = true; // Re-enable realtime updates
+        realtimeUpdateRef.current = true;
       });
     },
     [safeSeek]
@@ -1148,6 +1505,7 @@ export default function Player({
   /* =======================
      Prop settings watcher
      ======================= */
+
   useEffect(() => {
     if (propSetting) {
       propSettingRef.current = propSetting;
@@ -1177,6 +1535,24 @@ export default function Player({
             className={`animate-spin ${playerColors.secondary}`}
             size={42}
           />
+        </div>
+      )}
+
+      {/* Debug info */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs p-2 rounded z-40">
+          <div>Movie ID: {movieId}</div>
+          <div>Episode ID: {episodeId || "None"}</div>
+          <div>Movie Slug: {movieSlug || "None"}</div>
+          <div>Episode: {episode || "None"}</div>
+          <div>
+            History Key: {generateHistoryKey(movieSlug, episode) || "None"}
+          </div>
+          <div>View counted: {hasCountedView ? "Yes" : "No"}</div>
+          <div>Watch time: {Math.round(watchTimeRef.current)}s</div>
+          <div>User logged in: {user ? "Yes" : "No"}</div>
+          <div>Sync active: {isSyncingRef.current ? "Yes" : "No"}</div>
+          <div>Sync queue size: {syncQueueRef.current.size}</div>
         </div>
       )}
 

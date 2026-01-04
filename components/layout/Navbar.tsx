@@ -12,6 +12,20 @@ import {
   Calendar,
   Star,
   Play,
+  Tv,
+  Music,
+  Gamepad2,
+  Heart,
+  Ghost,
+  Sparkles,
+  Drama,
+  History,
+  Camera,
+  Compass,
+  Globe,
+  Rocket,
+  Sword,
+  Zap,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -54,6 +68,64 @@ interface GenreResponse {
 
 const MOVIE_API_URL = process.env.NEXT_PUBLIC_MOVIE_API_URL;
 
+/* ================== GENRE ICON MAPPING ================== */
+// const getGenreIcon = (genreTitle: string) => {
+//   const lowerTitle = genreTitle.toLowerCase();
+
+//   const iconMap: { [key: string]: JSX.Element } = {
+//     "hành động": <Sword className="w-5 h-5" />,
+//     "phiêu lưu": <Compass className="w-5 h-5" />,
+//     "hoạt hình": <Sparkles className="w-5 h-5" />,
+//     hài: <Gamepad2 className="w-5 h-5" />,
+//     "tâm lý": <Heart className="w-5 h-5" />,
+//     "kinh dị": <Ghost className="w-5 h-5" />,
+//     "gia đình": <Drama className="w-5 h-5" />,
+//     fantasy: <Sparkles className="w-5 h-5" />,
+//     "lịch sử": <History className="w-5 h-5" />,
+//     "khoa học viễn tưởng": <Rocket className="w-5 h-5" />,
+//     "viễn tưởng": <Rocket className="w-5 h-5" />,
+//     "âm nhạc": <Music className="w-5 h-5" />,
+//     "bí ẩn": <Camera className="w-5 h-5" />,
+//     "lãng mạn": <Heart className="w-5 h-5" />,
+//     "tình cảm": <Heart className="w-5 h-5" />,
+//     "giật gân": <Zap className="w-5 h-5" />,
+//     "tài liệu": <Globe className="w-5 h-5" />,
+//   };
+
+//   // Tìm kiếm từ khóa trong tiêu đề
+//   for (const [key, icon] of Object.entries(iconMap)) {
+//     if (lowerTitle.includes(key)) {
+//       return icon;
+//     }
+//   }
+
+//   return <Film className="w-5 h-5" />;
+// };
+
+const getGenreColor = (genreTitle: string) => {
+  const colors = [
+    "from-purple-500 to-pink-500",
+    "from-blue-500 to-cyan-500",
+    "from-green-500 to-emerald-500",
+    "from-orange-500 to-red-500",
+    "from-violet-500 to-purple-500",
+    "from-rose-500 to-pink-500",
+    "from-sky-500 to-blue-500",
+    "from-lime-500 to-green-500",
+    "from-amber-500 to-orange-500",
+    "from-indigo-500 to-purple-500",
+    "from-teal-500 to-cyan-500",
+    "from-rose-500 to-red-500",
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < genreTitle.length; i++) {
+    hash = genreTitle.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+};
+
 /* ================== COMPONENT ================== */
 const Navbar = () => {
   const router = useRouter();
@@ -78,6 +150,8 @@ const Navbar = () => {
 
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const genreRef = useRef<HTMLDivElement>(null);
+
   /* ================== EFFECTS ================== */
 
   useEffect(() => {
@@ -98,6 +172,9 @@ const Navbar = () => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowSearchResults(false);
       }
+      if (genreRef.current && !genreRef.current.contains(e.target as Node)) {
+        setOpenMenu(null);
+      }
     };
     document.addEventListener("mousedown", clickOutside);
     return () => document.removeEventListener("mousedown", clickOutside);
@@ -117,6 +194,7 @@ const Navbar = () => {
     };
     loadGenres();
   }, []);
+
   const handleViewAllResults = () => {
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
@@ -164,11 +242,13 @@ const Navbar = () => {
     await logout();
     router.push("/");
   };
+
   const handleResultClick = (movie: Movie) => {
     router.push(`/movie/${movie.slug}`);
     setShowSearchResults(false);
     setSearchQuery("");
   };
+
   const formatRating = (r?: number) => (r ? r.toFixed(1) : "0.0");
   const toggleMenu = (menu: string) => {
     setOpenMenu(openMenu === menu ? null : menu);
@@ -229,7 +309,7 @@ const Navbar = () => {
                 <div className="p-4 border-b border-gray-700">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-white">
-                      Hiển thị {Math.min(searchResults.length, 5)} /{" "}
+                      Hiển thị {Math.min(searchResults.length, 3)} /{" "}
                       {totalSearchResults} kết quả cho &quot;{searchQuery}&quot;
                     </span>
                   </div>
@@ -242,7 +322,7 @@ const Navbar = () => {
                       <p>Không tìm thấy kết quả phù hợp</p>
                     </div>
                   ) : (
-                    searchResults.map((movie) => (
+                    searchResults.slice(0, 3).map((movie) => (
                       <div
                         key={movie.id}
                         onClick={() => handleResultClick(movie)}
@@ -328,58 +408,101 @@ const Navbar = () => {
         {/* CENTER: Menu */}
         <div className="flex items-center gap-6 text-sm">
           <Link
-            href="/category/phim-le"
-            className="hover:text-blue-400 transition-colors"
+            href="/type/movie"
+            className="hover:text-blue-400 transition-colors px-3 py-2 rounded-lg hover:bg-white/5"
           >
             Phim Lẻ
           </Link>
           <Link
-            href="/category/phim-bo"
-            className="hover:text-blue-400 transition-colors"
+            href="/type/series"
+            className="hover:text-blue-400 transition-colors px-3 py-2 rounded-lg hover:bg-white/5"
           >
             Phim Bộ
           </Link>
-          <Link href="/rank" className="hover:text-blue-400 transition-colors">
+          <Link
+            href="/rank"
+            className="hover:text-blue-400 transition-colors px-3 py-2 rounded-lg hover:bg-white/5"
+          >
             Xem nhiều
           </Link>
 
           {/* Genres Dropdown */}
-          <div className="relative">
+          {/* Genres Dropdown */}
+          <div className="relative" ref={genreRef}>
             <button
               onClick={() => toggleMenu("theloai")}
-              className="flex items-center gap-1 hover:text-blue-400 transition-colors"
+              className="flex items-center gap-1 px-3 py-2 rounded-lg
+      hover:text-blue-400 hover:bg-white/5 transition"
             >
-              Thể loại <ChevronDown className="w-4 h-4" />
+              Thể loại
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${
+                  openMenu === "theloai" ? "rotate-180" : ""
+                }`}
+              />
             </button>
+
             {openMenu === "theloai" && (
-              <div className="absolute left-0 mt-2 w-64 bg-gray-800/95 backdrop-blur-md border border-gray-700 rounded-lg shadow-xl p-2 z-50 max-h-80 overflow-y-auto">
+              <div
+                className="
+        absolute left-1/2 -translate-x-1/2 mt-2
+        w-[360px] sm:w-[420px] md:w-[480px]
+        bg-gray-900/95 backdrop-blur-xl
+        border border-gray-700 rounded-xl
+        shadow-2xl p-4 z-50
+      "
+              >
+                {/* ===== Loading ===== */}
                 {isLoadingGenres ? (
-                  <div className="p-4 text-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-9 rounded-lg bg-gray-800" />
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  genres.map((genre) => (
-                    <Link
-                      key={genre.id}
-                      href={`/the-loai/${genre.slug}`}
-                      onClick={() => setOpenMenu(null)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-700 rounded-lg transition-colors group"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <Film className="w-4 h-4 text-blue-400" />
-                      </div>
-                      <div>
-                        <span className="font-medium text-white group-hover:text-blue-400">
+                  <>
+                    {/* ===== Genre List ===== */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {genres.slice(0, 12).map((genre) => (
+                        <Link
+                          key={genre.id}
+                          href={`/genre/${genre.slug}`}
+                          onClick={() => setOpenMenu(null)}
+                          className="
+                  flex items-center justify-center
+                  rounded-lg px-3 py-2 text-sm font-medium
+                  bg-gray-800/60 text-gray-200
+                  hover:bg-gray-700/70 hover:text-blue-400
+                  transition
+                "
+                        >
                           {genre.title}
-                        </span>
-                        {genre.description && (
-                          <p className="text-xs text-gray-400 truncate">
-                            {genre.description}
-                          </p>
-                        )}
+                        </Link>
+                      ))}
+                    </div>
+
+                    {/* ===== View All ===== */}
+                    {genres.length > 12 && (
+                      <div className="mt-4 pt-3 border-t border-gray-800">
+                        <Link
+                          href="/the-loai"
+                          onClick={() => setOpenMenu(null)}
+                          className="
+                  flex items-center justify-center gap-2
+                  rounded-lg py-2 text-sm
+                  bg-gray-800 hover:bg-gray-700
+                  text-gray-300 hover:text-white
+                  transition
+                "
+                        >
+                          Xem tất cả {genres.length} thể loại
+                          <ChevronDown className="w-4 h-4 rotate-90" />
+                        </Link>
                       </div>
-                    </Link>
-                  ))
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -394,22 +517,154 @@ const Navbar = () => {
 
       {/* ================= MOBILE ================= */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3">
-        <button onClick={() => setMobileOpen(!mobileOpen)}>
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2 rounded-lg hover:bg-white/5"
+        >
           {mobileOpen ? <X /> : <Menu />}
         </button>
 
-        <Link href="/" className="font-bold text-white">
+        <Link href="/" className="font-bold text-white text-lg">
           SoranoHaru
         </Link>
 
-        <Search />
+        <button
+          onClick={() => setShowSearchResults(true)}
+          className="p-2 rounded-lg hover:bg-white/5"
+        >
+          <Search />
+        </button>
       </div>
 
+      {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="lg:hidden bg-gray-900 p-4 space-y-3 flex flex-col">
-          <Link href="/category/phim-le">Phim Lẻ</Link>
-          <Link href="/category/phim-bo">Phim Bộ</Link>
+        <div className="lg:hidden bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 p-4 space-y-2 h-max">
+          <Link
+            href="/type/movie"
+            className="block px-4 py-3 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
+            onClick={() => setMobileOpen(false)}
+          >
+            Phim Lẻ
+          </Link>
+          <Link
+            href="/type/series"
+            className="block px-4 py-3 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
+            onClick={() => setMobileOpen(false)}
+          >
+            Phim Bộ
+          </Link>
+          {/* <div className="px-4 py-2">
+            <h4 className="text-sm font-semibold text-gray-400 mb-2">
+              Thể loại
+            </h4>
+            <div className="grid grid-cols-3 gap-2">
+              {genres.slice(0, 6).map((genre) => (
+                <Link
+                  key={genre.id}
+                  href={`/genre/${genre.slug}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex flex-col items-center justify-center p-3 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-colors"
+                >
+                  <div
+                    className={`w-10 h-10 rounded-full bg-gradient-to-br ${getGenreColor(
+                      genre.title
+                    )} flex items-center justify-center mb-2`}
+                  >
+                    <div className="text-white">
+                      {getGenreIcon(genre.title)}
+                    </div>
+                  </div>
+                  <span className="text-xs text-center text-gray-300">
+                    {genre.title}
+                  </span>
+                </Link>
+              ))}
+            </div>
+            {genres.length > 6 && (
+              <Link
+                href="/the-loai"
+                onClick={() => setMobileOpen(false)}
+                className="block text-center mt-3 px-4 py-2 text-sm text-blue-400 hover:text-blue-300"
+              >
+                Xem thêm {genres.length - 6} thể loại khác
+              </Link>
+            )}
+          </div> */}
           <MobileUserMenu />
+        </div>
+      )}
+
+      {/* Mobile Search Modal */}
+      {showSearchResults && (
+        <div className="lg:hidden fixed inset-0 bg-gray-900 z-50 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white">Tìm kiếm</h2>
+            <button
+              onClick={() => setShowSearchResults(false)}
+              className="p-2 rounded-lg hover:bg-white/5"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSearchSubmit} className="mb-4">
+            <div className="flex items-center gap-2 rounded-full bg-gray-800 px-4 py-3">
+              <Search className="w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm phim, diễn viên..."
+                className="bg-transparent outline-none w-full text-white"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                autoFocus
+              />
+            </div>
+          </form>
+
+          {/* Search Results */}
+          <div className="space-y-3">
+            {searchResults.map((movie) => (
+              <div
+                key={movie.id}
+                onClick={() => {
+                  handleResultClick(movie);
+                  setShowSearchResults(false);
+                }}
+                className="flex gap-3 p-3 rounded-lg bg-gray-800/50 active:bg-gray-700/50"
+              >
+                <div className="relative w-16 h-20 shrink-0 rounded overflow-hidden">
+                  {movie.thumbnail ? (
+                    <img
+                      src={movie.thumbnail}
+                      alt={movie.title}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                      <Film className="w-8 h-8 text-gray-500" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white mb-1">
+                    {movie.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    {movie.year && <span>{movie.year}</span>}
+                    {movie.rating && (
+                      <>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-yellow-500" />
+                          {formatRating(movie.rating)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </nav>

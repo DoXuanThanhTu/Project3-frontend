@@ -24,7 +24,7 @@ const MovieDetailPage = () => {
       try {
         setIsLoading(true);
         setError(null);
-        useAppStore.setState({ lang: "en" });
+        // useAppStore.setState({ lang: "en" });
         const response = await api.get(`/movie/full/${slug}`);
 
         if (response.data.success && response.data.data) {

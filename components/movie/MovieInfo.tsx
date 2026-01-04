@@ -24,10 +24,13 @@ const MovieInfo: React.FC<MovieInfoProps> = ({ movie }) => {
     <div className="flex flex-col space-y-6">
       {/* Poster */}
       <div className="relative aspect-2/3 w-full overflow-hidden rounded-xl shadow-2xl">
-        <img
+        <Image
           src={movie.thumbnail ?? "/no_thumb.png"}
           alt={movie.title || "No title"}
           className="object-cover w-full h-full"
+          width={400}
+          height={600}
+          loading="lazy"
         />
         {/* Rating Badge */}
         <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-black/80 px-3 py-1.5 text-sm font-bold">
@@ -72,25 +75,30 @@ const MovieInfo: React.FC<MovieInfoProps> = ({ movie }) => {
                 key={genre.id}
                 className="rounded-full bg-linear-to-r from-purple-900/30 to-pink-900/30 px-3 py-1 text-xs text-purple-300 backdrop-blur-sm"
               >
-                {genre.name}
+                {genre.title}
               </span>
             ))}
           </div>
         </div>
       )}
-
+      {movie.description && (
+        <div className="flex flex-col">
+          <span className="text-gray-400">Mô tả:</span>
+          <span className="font-medium text-white">{movie.description}</span>
+        </div>
+      )}
       {/* Franchise */}
-      {movie.franchise && (
+      {/* {movie.franchise && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-400">Series</h3>
           <div className="rounded-lg bg-linear-to-r from-gray-900/50 to-gray-800/50 p-3 backdrop-blur-sm">
             <span className="text-white">{movie.franchise.name}</span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Quick Info */}
-      <div className="space-y-3 rounded-xl bg-linear-to-br from-gray-900/50 to-black/50 p-4 backdrop-blur-sm">
+      {/* <div className="space-y-3 rounded-xl bg-linear-to-br from-gray-900/50 to-black/50 p-4 backdrop-blur-sm">
         <h3 className="text-sm font-semibold text-gray-400">Thông tin nhanh</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -106,7 +114,7 @@ const MovieInfo: React.FC<MovieInfoProps> = ({ movie }) => {
             </div>
           )}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

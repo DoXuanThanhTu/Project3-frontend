@@ -45,6 +45,8 @@ export default function UserMenu({ onLogout }: UserMenuProps) {
 
   const handleLogout = async () => {
     await logout();
+    localStorage.clear();
+    sessionStorage.clear();
     if (onLogout) onLogout();
   };
 
@@ -128,7 +130,7 @@ export default function UserMenu({ onLogout }: UserMenuProps) {
             <Settings className="w-4 h-4" />
             <span>Chỉnh sửa thông tin</span>
           </Link>
-          <Link
+          {/* <Link
             href="/favorites"
             className="flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 transition-colors text-gray-200"
             onClick={() => setIsOpen(false)}
@@ -143,7 +145,7 @@ export default function UserMenu({ onLogout }: UserMenuProps) {
           >
             <Clock className="w-4 h-4" />
             <span>Phim đã xem</span>
-          </Link>
+          </Link> */}
 
           {/* Divider */}
           <div className="my-2 border-t border-gray-700"></div>

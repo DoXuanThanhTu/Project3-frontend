@@ -52,6 +52,7 @@ export interface IMovieResponse {
     id: string;
     name: string;
     slug: string;
+    title: string;
   }[];
 
   cast?: string[];

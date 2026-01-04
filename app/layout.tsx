@@ -5,6 +5,7 @@ import AppProvider from "@/providers/AppProvider";
 import { cookies } from "next/headers";
 import Navbar from "@/components/layout/Navbar";
 import { StoreProvider } from "@/providers/StoreProvider";
+import { useAppStore } from "@/stores";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -20,21 +21,23 @@ export default async function RootLayout({
   // ✅ phải await vì cookies() trả về Promise
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get("theme");
-  const langCookie = cookieStore.get("lang");
+  // const langCookie = cookieStore.get("lang");
 
   const cookieTheme =
     (themeCookie?.value as "white" | "dark" | "orange") ?? "dark";
-  const cookieLang = (langCookie?.value as "vi" | "en") ?? "en";
-
+  // const cookieLang = (langCookie?.value as "vi" | "en") ?? "vi";
+  // const { setLang } = useAppStore();
+  // setLang("vi");
+  useAppStore.setState({ lang: "vi" });
   return (
     <html
-      lang={cookieLang}
+      lang={"vi"}
       className={cookieTheme !== "white" ? `theme-${cookieTheme}` : ""}
     >
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
-        <AppProvider initialTheme={cookieTheme} initialLang={cookieLang}>
+        <AppProvider initialTheme={cookieTheme} initialLang={"vi"}>
           {/* <Navbar /> */}
           <StoreProvider>
             <div className="grow">{children}</div>

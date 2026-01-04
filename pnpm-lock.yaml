@@ -32,6 +32,9 @@ importers:
       i18next:
         specifier: ^25.7.3
         version: 25.7.3(typescript@5.9.3)
+      imagekit-javascript:
+        specifier: ^4.0.1
+        version: 4.0.1
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -1386,6 +1389,9 @@ packages:
   ignore@7.0.5:
     resolution: {integrity: sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg==}
     engines: {node: '>= 4'}
+
+  imagekit-javascript@4.0.1:
+    resolution: {integrity: sha512-V3eVMz7OW8w8dSNJXPtVcWQMdV0P1wRs+Bftb2B1bKRl8NjOf+NGRWYb/meJlrmSL/HxT68PjM92/XFB+9ZfJA==}
 
   import-fresh@3.3.1:
     resolution: {integrity: sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ==}
@@ -3702,6 +3708,8 @@ snapshots:
   ignore@5.3.2: {}
 
   ignore@7.0.5: {}
+
+  imagekit-javascript@4.0.1: {}
 
   import-fresh@3.3.1:
     dependencies:
