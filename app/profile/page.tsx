@@ -579,14 +579,12 @@ const HistoryItem: React.FC<{
     <div className="relative w-20 h-12 shrink-0">
       <img
         src={item.thumbnail}
-        alt={item.title?.[lang as keyof typeof item.title] || "Movie"}
+        alt={item.title?.["vi"] || "Movie"}
         className="w-full h-full object-cover rounded"
       />
       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
         <Link
-          href={`/watch/${item.slug[lang as keyof typeof item.slug]}?ep=${
-            item.episode?.episodeOrLabel
-          }`}
+          href={`/watch/${item.slug["vi"]}?ep=${item.episode?.episodeOrLabel}`}
           className="flex gap-1 items-center"
         >
           <PlayCircle size={20} className="text-white" />
@@ -596,7 +594,7 @@ const HistoryItem: React.FC<{
 
     <div className="flex-1 min-w-0">
       <h3 className="font-semibold truncate">
-        {item.title?.[lang as keyof typeof item.title] || "Unknown Title"}
+        {item.title?.["vi"] || "Unknown Title"}
       </h3>
       <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
         <span>{formatDateTime(item.lastWatchedAt)}</span>
@@ -608,9 +606,7 @@ const HistoryItem: React.FC<{
 
     <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
       <Link
-        href={`/watch/${item.slug[lang as keyof typeof item.slug]}?ep=${
-          item.episode?.episodeOrLabel
-        }`}
+        href={`/watch/${item.slug["vi"]}?ep=${item.episode?.episodeOrLabel}`}
         className="flex gap-1 items-center"
       >
         Xem tiếp
@@ -1147,7 +1143,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                       <HistoryItem
                         key={item._id}
                         item={item}
-                        lang={lang}
+                        lang={"vi"}
                         formatDateTime={formatDateTime}
                       />
                     ))}
@@ -1306,7 +1302,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                   <HistoryItem
                     key={item._id}
                     item={item}
-                    lang={lang}
+                    lang={"vi"}
                     formatDateTime={formatDateTime}
                   />
                 ))}
@@ -1333,16 +1329,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                     <div key={movie._id} className="group relative">
                       <Link
                         href={`/movie/${
-                          movie.slug?.[lang as keyof typeof movie.slug] ||
-                          movie.slug?.vi ||
-                          movie.slug?.en
+                          movie.slug?.["vi"] || movie.slug?.vi || movie.slug?.en
                         }`}
                       >
                         <div className="aspect-[2/3] rounded-lg overflow-hidden">
                           <img
                             src={movie.thumbnail}
                             alt={
-                              movie.title?.[lang as keyof typeof movie.title] ||
+                              movie.title?.["vi"] ||
                               movie.title?.vi ||
                               movie.title?.en ||
                               "Movie"
@@ -1354,7 +1348,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
 
                       <div className="mt-3">
                         <h3 className="font-semibold truncate">
-                          {movie.title?.[lang as keyof typeof movie.title] ||
+                          {movie.title?.["vi"] ||
                             movie.title?.vi ||
                             movie.title?.en}
                         </h3>

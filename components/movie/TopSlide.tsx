@@ -142,7 +142,7 @@ export const TopSlide: React.FC<TopSlideProps> = ({
       </Swiper>
 
       {/* ===== THUMBNAILS ===== */}
-      <div className="z-20 w-full flex items-center justify-center absolute bottom-10 left-0">
+      <div className="hidden md:flex z-20 w-full items-center justify-center absolute bottom-10 left-0">
         <div className="w-175 flex items-center justify-center">
           <Swiper
             onSwiper={setThumbsSwiper}
