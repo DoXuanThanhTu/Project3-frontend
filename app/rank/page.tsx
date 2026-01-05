@@ -26,6 +26,7 @@ import {
   Timer,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import api from "@/lib/api";
 
 // ===== Types =====
 interface Movie {
@@ -134,8 +135,7 @@ interface PeriodInfo {
   isCustom: boolean;
 }
 
-// ===== Constants =====
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+// ===== Constants =====;
 
 // ===== Time Periods =====
 const timePeriods = [
@@ -656,7 +656,7 @@ export default function RankingPage() {
         if (type) params.type = type;
       }
 
-      const response = await axios.get(`${API_URL}${activeCategory.endpoint}`, {
+      const response = await api.get(`${activeCategory.endpoint}`, {
         params,
       });
 

@@ -391,8 +391,8 @@ const EditProfilePopup: React.FC<{
   const { user, setUser } = useAuthStore();
   const [formData, setFormData] = useState({
     displayName: userData.displayName || "",
-    email: userData.email || "",
-    phone: userData.phone || "",
+    // email: userData.email || "",
+    // phone: userData.phone || "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -402,8 +402,8 @@ const EditProfilePopup: React.FC<{
     if (isOpen) {
       setFormData({
         displayName: userData.displayName || "",
-        email: userData.email || "",
-        phone: userData.phone || "",
+        // email: userData.email || "",
+        // phone: userData.phone || "",
       });
     }
   }, [isOpen, userData]);
@@ -488,7 +488,7 @@ const EditProfilePopup: React.FC<{
             />
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <label className="block text-sm font-medium">Email</label>
             <input
               type="email"
@@ -511,7 +511,7 @@ const EditProfilePopup: React.FC<{
               className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               placeholder="Nhập số điện thoại"
             />
-          </div>
+          </div> */}
 
           <div className="flex gap-3 pt-4">
             <button
@@ -1175,11 +1175,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                   <h1 className="text-3xl md:text-4xl font-bold">
                     {userData.displayName}
                   </h1>
-                  {userData.membership && (
+                  {/* {userData.membership && (
                     <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-full">
                       {userData.membership}
                     </span>
-                  )}
+                  )} */}
                 </div>
                 {userData.username && (
                   <p className="text-gray-600 dark:text-gray-300 mt-1">
