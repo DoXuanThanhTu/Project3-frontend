@@ -22,14 +22,19 @@ import {
   Lock,
   X,
   Camera,
+  Upload,
+  AlertCircle,
+  Check,
 } from "lucide-react";
-// import ImageUploadPopup from "@/components/images/ImageUploadPopup";
 import { IMovieResponse } from "@/types/response.type";
 import api from "@/lib/api";
 import { useAppStore } from "@/stores";
 import Link from "next/link";
 import Image from "next/image";
 import useAuthStore from "@/stores/auth.store";
+import ImageKitUpload from "@/components/uploads/ImageKitUpload";
+import { UploadResponse } from "@/types/imagekit";
+
 export interface ICommentUser {
   id: string;
   displayName: string;
@@ -199,7 +204,7 @@ interface IUserData {
   email: string;
   phone: string;
   avatar: string;
-  coverImage: string;
+  cover: string;
   joinDate: string;
   membership: string;
   level: number;
@@ -483,7 +488,7 @@ const EditProfilePopup: React.FC<{
             />
           </div>
 
-          {/* <div className="space-y-2">
+          <div className="space-y-2">
             <label className="block text-sm font-medium">Email</label>
             <input
               type="email"
@@ -506,7 +511,7 @@ const EditProfilePopup: React.FC<{
               className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               placeholder="Nhập số điện thoại"
             />
-          </div> */}
+          </div>
 
           <div className="flex gap-3 pt-4">
             <button
@@ -525,6 +530,177 @@ const EditProfilePopup: React.FC<{
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// Component Popup Upload Ảnh
+const ImageUploadPopup: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  type: "avatar" | "cover";
+  currentImage: string;
+  onUploadSuccess: (imageUrl: string) => Promise<void>;
+}> = ({ isOpen, onClose, type, currentImage, onUploadSuccess }) => {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  const handleUploadSuccess = async (response: UploadResponse) => {
+    try {
+      setUploading(true);
+      setUploadError(null);
+
+      // Gọi hàm xử lý upload thành công từ parent
+      await onUploadSuccess(response.url);
+
+      setUploadSuccess(true);
+      setTimeout(() => {
+        onClose();
+        setUploadSuccess(false);
+      }, 1500);
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      setUploadError(error.response?.data?.message || "Cập nhật ảnh thất bại");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getFolder = () => {
+    return type === "avatar"
+      ? "/movie-website/avatars"
+      : "/movie-website/covers";
+  };
+
+  const getTags = () => {
+    return [type, "profile", "user-upload"];
+  };
+
+  const getButtonText = () => {
+    return type === "avatar" ? "Tải lên ảnh đại diện" : "Tải lên ảnh bìa";
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl">
+        <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Camera size={20} />
+            {type === "avatar" ? "Chỉnh sửa ảnh đại diện" : "Chỉnh sửa ảnh bìa"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+            disabled={uploading}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6">
+          {/* Hiển thị lỗi */}
+          {uploadError && (
+            <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg flex items-center gap-2">
+              <AlertCircle size={18} />
+              {uploadError}
+            </div>
+          )}
+
+          {/* Hiển thị thành công */}
+          {uploadSuccess && (
+            <div className="mb-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-lg flex items-center gap-2">
+              <Check size={18} />
+              Cập nhật ảnh thành công!
+            </div>
+          )}
+
+          {/* Ảnh hiện tại */}
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Ảnh hiện tại:
+            </h3>
+            <div
+              className={`relative ${
+                type === "avatar"
+                  ? "w-32 h-32 mx-auto rounded-full overflow-hidden"
+                  : "w-full h-40 rounded-lg overflow-hidden"
+              } border border-gray-200 dark:border-gray-700`}
+            >
+              <img
+                src={
+                  currentImage ||
+                  (type === "avatar"
+                    ? "/default-avatar.png"
+                    : "/default-cover.jpg")
+                }
+                alt="Current"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+
+          {/* Component Upload */}
+          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
+            <ImageKitUpload
+              onUploadSuccess={handleUploadSuccess}
+              folder={getFolder()}
+              tags={getTags()}
+              multiple={false}
+              showPreview={true}
+              showProgress={true}
+              buttonText={getButtonText()}
+              maxFileSize={5 * 1024 * 1024} // 5MB
+              acceptedFileTypes={["image/jpeg", "image/png", "image/webp"]}
+              // onUploadStart={() => {
+              //   setUploading(true);
+              //   setUploadError(null);
+              // }}
+              // onUploadEnd={() => setUploading(false)}
+              className=""
+              // disabled={uploading}
+            />
+          </div>
+
+          {/* Hướng dẫn */}
+          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <h3 className="font-medium text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+              <AlertCircle size={16} />
+              Lưu ý khi upload:
+            </h3>
+            <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
+              {type === "avatar" ? (
+                <>
+                  <li>• Kích thước đề xuất: 400x400 pixels</li>
+                  <li>• Định dạng: JPG, PNG, WebP</li>
+                  <li>• Dung lượng tối đa: 5MB</li>
+                  <li>• Ảnh vuông sẽ hiển thị tốt nhất</li>
+                </>
+              ) : (
+                <>
+                  <li>• Kích thước đề xuất: 1200x400 pixels</li>
+                  <li>• Định dạng: JPG, PNG, WebP</li>
+                  <li>• Dung lượng tối đa: 5MB</li>
+                  <li>• Tỉ lệ 3:1 sẽ hiển thị tốt nhất</li>
+                </>
+              )}
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer với nút đóng */}
+        <div className="flex justify-end p-6 border-t dark:border-gray-700">
+          <button
+            onClick={onClose}
+            disabled={uploading}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
+          >
+            Đóng
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -654,8 +830,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "history" | "favorites" | "reviews"
   >("overview");
-  const [showImageUploadPopup, setShowImageUploadPopup] = useState(false);
-  const [uploadType, setUploadType] = useState<"avatar" | "cover">("avatar");
   const lang = useAppStore((state) => state.lang);
   const user = useAuthStore((state) => state.user);
   const { setUser } = useAuthStore();
@@ -671,8 +845,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
   // State cho các popup
   const [showChangePasswordPopup, setShowChangePasswordPopup] = useState(false);
   const [showEditProfilePopup, setShowEditProfilePopup] = useState(false);
-  const [showEditAvatarPopup, setShowEditAvatarPopup] = useState(false);
-  const [showEditCoverPopup, setShowEditCoverPopup] = useState(false);
+
+  // State cho upload ảnh
+  const [showImageUploadPopup, setShowImageUploadPopup] = useState(false);
+  const [uploadType, setUploadType] = useState<"avatar" | "cover">("avatar");
+  const [updatingImage, setUpdatingImage] = useState(false);
 
   const getPlayerSettings = (): PlayerSettings => {
     if (typeof window === "undefined") {
@@ -806,6 +983,58 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
     }
   };
 
+  const handleImageUploadSuccess = async (imageUrl: string) => {
+    if (!userData) return;
+
+    try {
+      setUpdatingImage(true);
+      const field = uploadType === "avatar" ? "avatar" : "cover";
+
+      const updatedUserData = {
+        ...userData,
+        [field]: imageUrl,
+      };
+      setUserData(updatedUserData);
+
+      // Cập nhật ngay trong auth store để các component khác thấy
+      if (user) {
+        setUser({
+          ...user,
+          [field]: imageUrl,
+        });
+      }
+
+      // Gọi API cập nhật ảnh
+      const response = await api.patch("/profile/update", {
+        [field]: imageUrl,
+      });
+
+      // Xác nhận lại với server response
+      setUserData(response.data);
+      setUser(response.data);
+
+      return Promise.resolve();
+    } catch (error: any) {
+      // ROLLBACK: Nếu API thất bại, revert về ảnh cũ
+      console.error("Update image error:", error);
+
+      // Có thể fetch lại user data từ server để đảm bảo consistency
+      // const profileRes = await api.get("/profile/me");
+      // setUserData(profileRes.data.data);
+      // setUser(profileRes.data);
+
+      throw new Error(error.response?.data?.message || "Cập nhật ảnh thất bại");
+    } finally {
+      setUpdatingImage(false);
+    }
+  };
+
+  // Hàm mở popup upload ảnh
+  const openImageUpload = (type: "avatar" | "cover") => {
+    setUploadType(type);
+    setShowImageUploadPopup(true);
+  };
+
   // Hàm xử lý đăng xuất
   const handleLogout = () => {
     // Xóa token và thông tin đăng nhập
@@ -872,72 +1101,23 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
         onUpdate={handleUpdateUserData}
       />
 
-      {/* Popup chỉnh sửa avatar (đơn giản) */}
-      {showEditAvatarPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Camera size={20} />
-                Chỉnh sửa ảnh đại diện
-              </h2>
-              <button
-                onClick={() => setShowEditAvatarPopup(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Tính năng đang được phát triển. Vui lòng quay lại sau!
-              </p>
-              <button
-                onClick={() => setShowEditAvatarPopup(false)}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Popup chỉnh sửa ảnh bìa (đơn giản) */}
-      {showEditCoverPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Camera size={20} />
-                Chỉnh sửa ảnh bìa
-              </h2>
-              <button
-                onClick={() => setShowEditCoverPopup(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Tính năng đang được phát triển. Vui lòng quay lại sau!
-              </p>
-              <button
-                onClick={() => setShowEditCoverPopup(false)}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Image Upload Popup */}
+      <ImageUploadPopup
+        isOpen={showImageUploadPopup}
+        onClose={() => setShowImageUploadPopup(false)}
+        type={uploadType}
+        currentImage={
+          uploadType === "avatar"
+            ? userData.avatar || "/default-avatar.png"
+            : userData.cover || "/default-cover.jpg"
+        }
+        onUploadSuccess={handleImageUploadSuccess}
+      />
 
       {/* Cover Image */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden">
         <img
-          src={userData.coverImage || "/default-cover.jpg"}
+          src={userData.cover || "/default-cover.jpg"}
           alt="Cover"
           className="w-full h-full object-cover"
         />
@@ -945,11 +1125,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
 
         {/* Edit Cover Button */}
         <button
-          onClick={() => setShowEditCoverPopup(true)}
-          className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+          onClick={() => openImageUpload("cover")}
+          className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition disabled:opacity-50"
+          disabled={updatingImage}
         >
           <Camera size={16} />
-          <span className="hidden md:inline">Chỉnh sửa ảnh bìa</span>
+          <span className="hidden md:inline">
+            {updatingImage && uploadType === "cover"
+              ? "Đang cập nhật..."
+              : "Chỉnh sửa ảnh bìa"}
+          </span>
         </button>
       </div>
 
@@ -969,10 +1154,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
 
             {/* Edit Avatar Button */}
             <button
-              onClick={() => setShowEditAvatarPopup(true)}
-              className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg"
+              onClick={() => openImageUpload("avatar")}
+              className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg disabled:opacity-50"
+              disabled={updatingImage}
+              title="Chỉnh sửa ảnh đại diện"
             >
-              <Camera size={16} />
+              {updatingImage && uploadType === "avatar" ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Camera size={16} />
+              )}
             </button>
           </div>
 
@@ -1004,6 +1195,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                       <button
                         onClick={() => setShowEditProfilePopup(true)}
                         className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition"
+                        title="Chỉnh sửa email"
                       >
                         <Edit size={14} />
                       </button>
@@ -1016,6 +1208,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
                       <button
                         onClick={() => setShowEditProfilePopup(true)}
                         className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition"
+                        title="Chỉnh sửa số điện thoại"
                       >
                         <Edit size={14} />
                       </button>

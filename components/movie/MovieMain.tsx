@@ -69,6 +69,8 @@ const MovieMain: React.FC<MovieMainProps> = ({
   const [activeTab, setActiveTab] = useState<
     "episodes" | "franchise" | "related"
   >("episodes");
+  const [episodeSearch, setEpisodeSearch] = useState("");
+
   const handleFollowToggle = () => {
     if (user) {
       const toogleFavorite = async () => {
@@ -120,9 +122,9 @@ const MovieMain: React.FC<MovieMainProps> = ({
               {movie.ratingAvg?.toFixed(1)}
             </span>
             <span>•</span>
-            <span>
-              👁 {movie.views ? formatNumber(movie.views) : "N/A"} lượt xem
-            </span>
+            {movie.views != undefined && (
+              <span>👁 {formatNumber(movie.views)} lượt xem</span>
+            )}
           </div>
         </div>
       </div>
@@ -191,7 +193,13 @@ const MovieMain: React.FC<MovieMainProps> = ({
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-75">
+      <div
+        className="min-h-75   overflow-y-auto
+    custom-scrollbar
+    rounded-xl
+    bg-gray-950/40
+    p-3 "
+      >
         {activeTab === "episodes" && (
           <div className="space-y-6">
             {/* Server Selection */}
@@ -201,7 +209,7 @@ const MovieMain: React.FC<MovieMainProps> = ({
                   key={server.server.id}
                   onClick={() => setSelectedServer(server)}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                    selectedServer.server.id === server.server.id
+                    selectedServer?.server.id === server.server.id
                       ? "bg-linear-to-r from-purple-600 to-pink-600 text-white"
                       : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                   }`}
@@ -211,26 +219,62 @@ const MovieMain: React.FC<MovieMainProps> = ({
               ))}
             </div>
 
-            {/* Episodes Grid */}
+            {/* Search Episodes */}
+            {selectedServer && (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Tìm tập phim..."
+                  value={episodeSearch}
+                  onChange={(e) => setEpisodeSearch(e.target.value)}
+                  className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm text-white placeholder-gray-400 outline-none ring-1 ring-gray-700 focus:ring-purple-500"
+                />
+              </div>
+            )}
+
+            {/* Episodes Grid (Scrollable) */}
             {selectedServer ? (
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-                {selectedServer.episodes.map((episode) => (
-                  <Link
-                    key={episode.slug}
-                    href={`/watch/${movie.slug}?ep=${episode.episodeOrLabel}`}
-                    className="group relative overflow-hidden rounded-lg bg-gray-900/50 p-4 text-center transition-all hover:bg-linear-to-br hover:from-purple-900/30 hover:to-pink-900/30"
-                  >
-                    <div className="text-lg font-bold text-white group-hover:text-purple-300">
-                      {episode.episodeOrLabel || 1}
-                    </div>
-                    {/* <div className="mt-1 text-xs text-gray-400 group-hover:text-gray-300">
-                      {episode.title || 1}
-                    </div> */}
-                  </Link>
-                ))}
+              <div
+                className="
+          max-h-[420px]
+          overflow-y-auto
+          rounded-xl
+          bg-gray-950/40
+          p-3
+          scrollbar-thin
+          scrollbar-thumb-gray-700
+          scrollbar-track-gray-900
+        "
+              >
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+                  {selectedServer.episodes
+                    .filter((ep) =>
+                      String(ep.episodeOrLabel || "")
+                        .toLowerCase()
+                        .includes(episodeSearch.toLowerCase())
+                    )
+                    .map((episode) => (
+                      <Link
+                        key={episode.slug}
+                        href={`/watch/${movie.slug}?ep=${episode.episodeOrLabel}`}
+                        className="group relative overflow-hidden rounded-lg bg-gray-900/70 p-4 text-center transition-all hover:bg-linear-to-br hover:from-purple-900/30 hover:to-pink-900/30"
+                      >
+                        <div className="text-lg font-bold text-white group-hover:text-purple-300">
+                          {episode.episodeOrLabel || 1}
+                        </div>
+                      </Link>
+                    ))}
+                </div>
+
+                {/* Empty state */}
+                {selectedServer.episodes.length === 0 && (
+                  <p className="py-6 text-center text-sm text-gray-400">
+                    Không có tập phim
+                  </p>
+                )}
               </div>
             ) : (
-              <p className="-mt-10">Chưa có tập phim hãy chờ nhé</p>
+              <p className="text-gray-400">Chưa có tập phim, hãy chờ nhé</p>
             )}
           </div>
         )}

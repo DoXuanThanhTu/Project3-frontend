@@ -84,31 +84,41 @@ const EpisodesByServer: React.FC<EpisodesByServerProps> = ({
   onEpisodeChangeWithoutReload,
 }) => {
   const [compactMode, setCompactMode] = useState(true);
+  const [episodeSearch, setEpisodeSearch] = useState("");
+
   const [activeServer, setActiveServer] = useState<Server | null>(
     servers?.length ? servers[0] : null
   );
 
   // Sắp xếp episodes theo episodeOrLabel (số hoặc alphabet)
-  const sortedEpisodes = useMemo(() => {
+  const filteredEpisodes = useMemo(() => {
     if (!activeServer?.episodes) return [];
 
-    return [...activeServer.episodes].sort((a, b) => {
-      // Sử dụng episodeOrLabel hoặc episode_number
-      const aLabel = a.episodeOrLabel || a.episode_number?.toString() || "";
-      const bLabel = b.episodeOrLabel || b.episode_number?.toString() || "";
+    return [...activeServer.episodes]
+      .filter((ep) => {
+        if (!episodeSearch.trim()) return true;
 
-      // Thử chuyển thành số để sắp xếp
-      const aNum = parseInt(aLabel);
-      const bNum = parseInt(bLabel);
+        const keyword = episodeSearch.toLowerCase();
+        return (
+          ep.episodeOrLabel?.toLowerCase().includes(keyword) ||
+          ep.episode_number?.toString().includes(keyword) ||
+          ep.title?.toLowerCase().includes(keyword)
+        );
+      })
+      .sort((a, b) => {
+        const aLabel = a.episodeOrLabel || a.episode_number?.toString() || "";
+        const bLabel = b.episodeOrLabel || b.episode_number?.toString() || "";
 
-      if (!isNaN(aNum) && !isNaN(bNum)) {
-        return aNum - bNum;
-      }
+        const aNum = parseInt(aLabel);
+        const bNum = parseInt(bLabel);
 
-      // Nếu không phải số thì sắp xếp theo alphabet
-      return aLabel.localeCompare(bLabel, undefined, { numeric: true });
-    });
-  }, [activeServer]);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return aNum - bNum;
+        }
+
+        return aLabel.localeCompare(bLabel, undefined, { numeric: true });
+      });
+  }, [activeServer, episodeSearch]);
 
   // Xử lý chọn tập và scroll tới player
   // const handleEpisodeClick = useCallback(
@@ -226,82 +236,115 @@ const EpisodesByServer: React.FC<EpisodesByServerProps> = ({
           </div>
         </div>
       </div>
+      {/* Search Episodes */}
+      {activeServer && (
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Tìm tập (VD: 1, 12, OVA...)"
+            value={episodeSearch}
+            onChange={(e) => setEpisodeSearch(e.target.value)}
+            className="
+        w-full
+        rounded-lg
+        bg-gray-900
+        px-4 py-2
+        text-sm text-white
+        placeholder-gray-400
+        outline-none
+        ring-1 ring-gray-700
+        focus:ring-blue-500
+      "
+          />
+        </div>
+      )}
 
       {/* Danh sách tập */}
-      {activeServer && sortedEpisodes.length > 0 && (
+      {activeServer && filteredEpisodes.length > 0 && (
         <div
-          className={`grid gap-3 ${
-            compactMode
-              ? "grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-2"
-              : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-          }`}
+          className="
+h-80
+      overflow-y-auto
+      custom-scrollbar
+      rounded-xl
+      bg-gray-950/40
+      p-3
+    "
         >
-          {sortedEpisodes.map((episode) => {
-            const isActive = isEpisodeActive(episode);
-            const episodeLabel = getEpisodeLabel(episode);
+          <div
+            className={`grid ${
+              compactMode
+                ? "grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-2"
+                : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+            }`}
+          >
+            {filteredEpisodes.map((episode) => {
+              const isActive = isEpisodeActive(episode);
+              const episodeLabel = getEpisodeLabel(episode);
 
-            if (compactMode) {
-              return (
-                <button
-                  key={`${episode.serverId}-${episodeLabel}`}
-                  onClick={() => handleEpisodeClick(episode, activeServer)}
-                  className={`cursor-pointer rounded-lg flex flex-col items-center justify-center h-14 transition-all hover:scale-105
+              if (compactMode) {
+                return (
+                  <button
+                    key={`${episode.serverId}-${episodeLabel}`}
+                    onClick={() => handleEpisodeClick(episode, activeServer)}
+                    className={`cursor-pointer rounded-lg flex flex-col items-center justify-center h-14 transition-all hover:scale-105
                     ${
                       isActive
                         ? "bg-blue-600 text-white ring-2 ring-blue-400"
                         : "bg-gray-800 hover:bg-gray-700 text-gray-200"
                     }
                   `}
-                  title={`${episode.title || ""} - ${episodeLabel}`}
+                    title={`${episode.title || ""} - ${episodeLabel}`}
+                  >
+                    {/* <Play size={14} className="mb-1" /> */}
+                    <span className="text-sm font-medium">{episodeLabel}</span>
+                  </button>
+                );
+              }
+
+              // Chế độ chi tiết
+              return (
+                <div
+                  key={`${episode.serverId}-${episodeLabel}`}
+                  onClick={() => handleEpisodeClick(episode, activeServer)}
+                  className={`cursor-pointer group relative rounded-lg overflow-hidden transition-all duration-200 ${
+                    isActive ? "ring-2 ring-blue-500" : ""
+                  }`}
                 >
-                  {/* <Play size={14} className="mb-1" /> */}
-                  <span className="text-sm font-medium">{episodeLabel}</span>
-                </button>
-              );
-            }
-
-            // Chế độ chi tiết
-            return (
-              <div
-                key={`${episode.serverId}-${episodeLabel}`}
-                onClick={() => handleEpisodeClick(episode, activeServer)}
-                className={`cursor-pointer group relative rounded-lg overflow-hidden transition-all duration-200 ${
-                  isActive ? "ring-2 ring-blue-500" : ""
-                }`}
-              >
-                <div className="aspect-video bg-gray-800 overflow-hidden">
-                  <Image
-                    src={getThumbnailUrl(episode)}
-                    alt={`Tập ${episodeLabel}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    width={400}
-                    height={600}
-                    loading="lazy"
-                  />
-                </div>
-
-                {isActive && (
-                  <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                    Đang phát
-                  </span>
-                )}
-
-                <div className="mt-2 ml-2">
-                  <div className="text-sm text-gray-200 font-medium truncate">
-                    {episode.title || `Tập ${episodeLabel}`}
+                  <div className="aspect-video bg-gray-800 overflow-hidden">
+                    <Image
+                      src={getThumbnailUrl(episode)}
+                      alt={`Tập ${episodeLabel}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      width={400}
+                      height={600}
+                      loading="lazy"
+                    />
                   </div>
-                  {/* <div className="text-xs text-gray-400">
+
+                  {isActive && (
+                    <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                      Đang phát
+                    </span>
+                  )}
+
+                  <div className="mt-2 ml-2">
+                    <div className="text-sm text-gray-200 font-medium truncate">
+                      {episode.title || `Tập ${episodeLabel}`}
+                    </div>
+                    {/* <div className="text-xs text-gray-400">
                     Tập {episodeLabel}
                   </div> */}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
       {/* Thông báo không có tập */}
-      {activeServer && sortedEpisodes.length === 0 && (
+      {activeServer && filteredEpisodes.length === 0 && (
         <div className="text-center py-8 text-gray-400">
           Không có tập nào trong server này.
         </div>
