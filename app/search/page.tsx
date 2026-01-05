@@ -21,6 +21,7 @@ import Pagination from "@/components/common/Pagination";
 import FilterSidebar from "@/components/common/FilterSidebar";
 import axios from "axios";
 import { IMovieResponse } from "@/types/response.type";
+import api from "@/lib/api";
 
 interface SearchResponse {
   success: boolean;
@@ -79,7 +80,7 @@ interface FilterOptions {
 //   return movie
 // };
 
-const MOVIE_API_URL = process.env.NEXT_PUBLIC_MOVIE_API_URL;
+// const MOVIE_API_URL = process.env.NEXT_PUBLIC_MOVIE_API_URL;
 
 export default function SearchPage() {
   const router = useRouter();
@@ -141,16 +142,14 @@ export default function SearchPage() {
             params.set("type", filters.type);
           }
 
-          const url = searchTerm.trim()
-            ? `${MOVIE_API_URL}/movie/search/${encodeURIComponent(
-                searchTerm
-              )}?${params.toString()}`
-            : `${MOVIE_API_URL}/movie?${params.toString()}`;
-
-          console.log("Fetching search URL:", url);
-
-          const response = await fetch(url);
-          const data: SearchResponse = await response.json();
+          const response = await api.get(
+            searchTerm.trim()
+              ? `/movie/search/${encodeURIComponent(
+                  searchTerm
+                )}?${params.toString()}`
+              : `movie`
+          );
+          const data: SearchResponse = response.data;
 
           console.log("Search response:", data);
 
@@ -177,7 +176,7 @@ export default function SearchPage() {
       },
       500
     ),
-    [MOVIE_API_URL, limit]
+    [limit]
   );
 
   // Load suggestions for search input
@@ -190,11 +189,9 @@ export default function SearchPage() {
 
       try {
         // Sử dụng endpoint suggestions nếu có, nếu không thì search thông thường
-        const url = new URL(
-          `${MOVIE_API_URL}/search?q=${encodeURIComponent(term)}&limit=5`
-        );
-        const response = await fetch(url.toString());
-        const data = await response.json();
+        const url = new URL(`/search?q=${encodeURIComponent(term)}&limit=5`);
+        const response = await api.get(url.toString());
+        const data: SearchResponse = response.data;
 
         if (data.success) {
           // Đảm bảo suggestions là mảng string
@@ -213,7 +210,7 @@ export default function SearchPage() {
         // Fallback: nếu không có suggestions API, không làm gì cả
       }
     }, 300),
-    [MOVIE_API_URL]
+    []
   );
 
   // Handle search input change
