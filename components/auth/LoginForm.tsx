@@ -81,7 +81,7 @@ export default function LoginForm({ onSuccess, onToggleForm }: LoginFormProps) {
           onChange={handleChange}
           required
           disabled={isLoading}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-3 border text-black placeholder:text-gray-400 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="you@example.com"
         />
       </div>
@@ -102,7 +102,7 @@ export default function LoginForm({ onSuccess, onToggleForm }: LoginFormProps) {
           required
           minLength={6}
           disabled={isLoading}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-3 border text-black placeholder:text-gray-400 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="••••••••"
         />
       </div>

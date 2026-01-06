@@ -106,7 +106,7 @@ export const TopSlide: React.FC<TopSlideProps> = ({
                         m.genres.slice(0, 3).map((g) => (
                           <Link
                             key={g.id}
-                            href={`/genre/${g.name}`}
+                            href={`/genre/${g.slug}`}
                             className="px-2 py-1 bg-white/20 rounded hover:bg-white/30 transition"
                           >
                             {g.title}

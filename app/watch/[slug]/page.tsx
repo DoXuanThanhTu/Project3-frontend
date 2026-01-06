@@ -23,6 +23,7 @@ interface Genre {
   id: string;
   name: string;
   slug: string;
+  title: string;
 }
 
 interface Franchise {
@@ -606,7 +607,7 @@ export default function WatchPage() {
                         key={genre.id}
                         className="px-3 py-1 bg-gray-800 rounded-full text-sm"
                       >
-                        {genre.name}
+                        {genre.title}
                       </span>
                     ))}
                   </div>

@@ -32,6 +32,7 @@ import api from "@/lib/api";
 interface Movie {
   _id: string;
   movieId: string;
+  views?: number;
   title:
     | string
     | {
@@ -212,7 +213,8 @@ const MovieRankingCard: React.FC<{
   movie: Movie;
   rank: number;
   category: string;
-}> = ({ movie, rank, category }) => {
+  period: string;
+}> = ({ movie, rank, category, period }) => {
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1:
@@ -277,7 +279,53 @@ const MovieRankingCard: React.FC<{
     if (typeof movie.description === "string") return movie.description;
     return movie.description?.vi || movie.description?.en || null;
   };
+  const renderViewsByPeriod = () => {
+    if (!movie.storedViews) return null;
 
+    let views = 0;
+    let label = "";
+
+    switch (period) {
+      case "day":
+        views = movie.storedViews.daily || 0;
+        label = "hôm nay";
+        break;
+      case "week":
+        views = movie.storedViews.weekly || 0;
+        label = "tuần này";
+        break;
+      case "month":
+        // Giả sử bạn có monthly trong storedViews, nếu không thì tính toán từ ngày
+        // Nếu API không trả về monthly, bạn có thể dùng total và chia
+        views = movie.storedViews.total || 0;
+        label = "tháng này";
+        break;
+      case "year":
+        views = movie.storedViews.total || 0;
+        label = "năm nay";
+        break;
+      case "custom":
+        views = movie.storedViews.total || 0;
+        label = "khoảng thời gian đã chọn";
+        break;
+      default:
+        views = movie.storedViews.total || 0;
+        label = "tổng cộng";
+    }
+
+    return (
+      <div className="text-right">
+        <div className="text-sm font-medium">
+          {movie.views?.toLocaleString() || "0"} lượt xem
+        </div>
+        <div className="text-xs text-gray-400">Tổng lượt xem</div>
+        <div className="text-sm font-medium">
+          {views.toLocaleString()} lượt xem
+        </div>
+        <div className="text-xs text-gray-400">{label}</div>
+      </div>
+    );
+  };
   const posterUrl = movie.poster || movie.thumbnail || "";
   const movieTitle = getMovieTitle();
   const movieSlug = getMovieSlug();
@@ -442,14 +490,16 @@ const MovieRankingCard: React.FC<{
                   <div className="text-xs text-gray-400">Tương tác TB</div>
                 </div>
               )} */}
-              {movie.storedViews && (
-                <div className="text-right">
-                  <div className="text-sm font-medium">
+              {renderViewsByPeriod()}
+              {/* {movie.storedViews && <div className="text-right">
+                {switch(period){
+                  case "day":
+                             <div className="text-sm font-medium">
                     {movie.storedViews.daily?.toLocaleString() || "0"} Lượt xem
                   </div>
-                  <div className="text-xs text-gray-400">hôm nay</div>
-                </div>
-              )}
+                  <div className="text-xs text-gray-400">hôm nay</div>    
+                }}
+                </div>} */}
             </div>
           </div>
         </div>
@@ -459,130 +509,130 @@ const MovieRankingCard: React.FC<{
 };
 
 // Genre Card Component
-const GenreRankingCard: React.FC<{
-  genre: GenreRanking;
-  rank: number;
-}> = ({ genre, rank }) => {
-  const getRankColor = (rank: number) => {
-    if (rank === 1) return "bg-gradient-to-r from-yellow-500 to-amber-500";
-    if (rank === 2) return "bg-gradient-to-r from-gray-400 to-gray-300";
-    if (rank === 3) return "bg-gradient-to-r from-amber-700 to-amber-600";
-    return "bg-gradient-to-r from-gray-800 to-gray-700";
-  };
+// const GenreRankingCard: React.FC<{
+//   genre: GenreRanking;
+//   rank: number;
+// }> = ({ genre, rank }) => {
+//   const getRankColor = (rank: number) => {
+//     if (rank === 1) return "bg-gradient-to-r from-yellow-500 to-amber-500";
+//     if (rank === 2) return "bg-gradient-to-r from-gray-400 to-gray-300";
+//     if (rank === 3) return "bg-gradient-to-r from-amber-700 to-amber-600";
+//     return "bg-gradient-to-r from-gray-800 to-gray-700";
+//   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3 }}
-      className="group bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-gray-600 transition-all duration-300"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${getRankColor(
-              rank
-            )}`}
-          >
-            {rank}
-          </div>
-          <div>
-            <h4 className="font-bold text-lg group-hover:text-pink-400 transition-colors">
-              {genre.genreName}
-            </h4>
-            <p className="text-sm text-gray-400">{genre.movieCount} phim</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-lg font-bold">
-            {genre.totalViews.toLocaleString()} lượt xem
-          </div>
-          <div className="text-sm text-gray-400">
-            {(genre.totalDuration / 3600).toFixed(0)} giờ xem
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+//   return (
+//     <motion.div
+//       initial={{ opacity: 0, x: -20 }}
+//       animate={{ opacity: 1, x: 0 }}
+//       transition={{ duration: 0.3 }}
+//       className="group bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-gray-600 transition-all duration-300"
+//     >
+//       <div className="flex items-center justify-between">
+//         <div className="flex items-center gap-4">
+//           <div
+//             className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${getRankColor(
+//               rank
+//             )}`}
+//           >
+//             {rank}
+//           </div>
+//           <div>
+//             <h4 className="font-bold text-lg group-hover:text-pink-400 transition-colors">
+//               {genre.genreName}
+//             </h4>
+//             <p className="text-sm text-gray-400">{genre.movieCount} phim</p>
+//           </div>
+//         </div>
+//         <div className="text-right">
+//           <div className="text-lg font-bold">
+//             {genre.totalViews.toLocaleString()} lượt xem
+//           </div>
+//           <div className="text-sm text-gray-400">
+//             {(genre.totalDuration / 3600).toFixed(0)} giờ xem
+//           </div>
+//         </div>
+//       </div>
+//     </motion.div>
+//   );
+// };
 
-// Country Card Component
-const CountryRankingCard: React.FC<{
-  country: CountryRanking;
-  rank: number;
-}> = ({ country, rank }) => {
-  const getFlagEmoji = (countryCode: string) => {
-    // Simple flag emoji mapping (you might want to use a proper library)
-    const flags: Record<string, string> = {
-      "việt nam": "🇻🇳",
-      vietnam: "🇻🇳",
-      vn: "🇻🇳",
-      "trung quốc": "🇨🇳",
-      china: "🇨🇳",
-      cn: "🇨🇳",
-      "hàn quốc": "🇰🇷",
-      korea: "🇰🇷",
-      kr: "🇰🇷",
-      "nhật bản": "🇯🇵",
-      japan: "🇯🇵",
-      jp: "🇯🇵",
-      mỹ: "🇺🇸",
-      usa: "🇺🇸",
-      us: "🇺🇸",
-      "thái lan": "🇹🇭",
-      thailand: "🇹🇭",
-      th: "🇹🇭",
-    };
+// // Country Card Component
+// const CountryRankingCard: React.FC<{
+//   country: CountryRanking;
+//   rank: number;
+// }> = ({ country, rank }) => {
+//   const getFlagEmoji = (countryCode: string) => {
+//     // Simple flag emoji mapping (you might want to use a proper library)
+//     const flags: Record<string, string> = {
+//       "việt nam": "🇻🇳",
+//       vietnam: "🇻🇳",
+//       vn: "🇻🇳",
+//       "trung quốc": "🇨🇳",
+//       china: "🇨🇳",
+//       cn: "🇨🇳",
+//       "hàn quốc": "🇰🇷",
+//       korea: "🇰🇷",
+//       kr: "🇰🇷",
+//       "nhật bản": "🇯🇵",
+//       japan: "🇯🇵",
+//       jp: "🇯🇵",
+//       mỹ: "🇺🇸",
+//       usa: "🇺🇸",
+//       us: "🇺🇸",
+//       "thái lan": "🇹🇭",
+//       thailand: "🇹🇭",
+//       th: "🇹🇭",
+//     };
 
-    return flags[country.country.toLowerCase()] || "🏴";
-  };
+//     return flags[country.country.toLowerCase()] || "🏴";
+//   };
 
-  const getRankColor = (rank: number) => {
-    if (rank === 1) return "bg-gradient-to-r from-yellow-500 to-amber-500";
-    if (rank === 2) return "bg-gradient-to-r from-gray-400 to-gray-300";
-    if (rank === 3) return "bg-gradient-to-r from-amber-700 to-amber-600";
-    return "bg-gradient-to-r from-gray-800 to-gray-700";
-  };
+//   const getRankColor = (rank: number) => {
+//     if (rank === 1) return "bg-gradient-to-r from-yellow-500 to-amber-500";
+//     if (rank === 2) return "bg-gradient-to-r from-gray-400 to-gray-300";
+//     if (rank === 3) return "bg-gradient-to-r from-amber-700 to-amber-600";
+//     return "bg-gradient-to-r from-gray-800 to-gray-700";
+//   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3 }}
-      className="group bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-gray-600 transition-all duration-300"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${getRankColor(
-              rank
-            )}`}
-          >
-            {rank}
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{getFlagEmoji(country.country)}</span>
-            <div>
-              <h4 className="font-bold text-lg group-hover:text-orange-400 transition-colors">
-                {country.country}
-              </h4>
-              <p className="text-sm text-gray-400">{country.movieCount} phim</p>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-lg font-bold">
-            {country.totalViews.toLocaleString()} lượt xem
-          </div>
-          <div className="text-sm text-gray-400">
-            Trung bình {Math.round(country.avgViewsPerMovie).toLocaleString()}
-            /phim
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+//   return (
+//     <motion.div
+//       initial={{ opacity: 0, x: -20 }}
+//       animate={{ opacity: 1, x: 0 }}
+//       transition={{ duration: 0.3 }}
+//       className="group bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-gray-600 transition-all duration-300"
+//     >
+//       <div className="flex items-center justify-between">
+//         <div className="flex items-center gap-4">
+//           <div
+//             className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${getRankColor(
+//               rank
+//             )}`}
+//           >
+//             {rank}
+//           </div>
+//           <div className="flex items-center gap-3">
+//             <span className="text-2xl">{getFlagEmoji(country.country)}</span>
+//             <div>
+//               <h4 className="font-bold text-lg group-hover:text-orange-400 transition-colors">
+//                 {country.country}
+//               </h4>
+//               <p className="text-sm text-gray-400">{country.movieCount} phim</p>
+//             </div>
+//           </div>
+//         </div>
+//         <div className="text-right">
+//           <div className="text-lg font-bold">
+//             {country.totalViews.toLocaleString()} lượt xem
+//           </div>
+//           <div className="text-sm text-gray-400">
+//             Trung bình {Math.round(country.avgViewsPerMovie).toLocaleString()}
+//             /phim
+//           </div>
+//         </div>
+//       </div>
+//     </motion.div>
+//   );
+// };
 
 // Stats Card Component
 const StatsCard: React.FC<{
@@ -1133,6 +1183,7 @@ export default function RankingPage() {
                               movie={movie}
                               rank={index + 1}
                               category={activeCategory.id}
+                              period={periodInfo?.name || ""}
                             />
                           </div>
                         ))}
@@ -1145,13 +1196,13 @@ export default function RankingPage() {
                         exit={{ opacity: 0 }}
                         className="space-y-3"
                       >
-                        {genres.slice(0, 50).map((genre, index) => (
+                        {/* {genres.slice(0, 50).map((genre, index) => (
                           <GenreRankingCard
                             key={genre.genreId}
                             genre={genre}
                             rank={index + 1}
                           />
-                        ))}
+                        ))} */}
                       </motion.div>
                     ) : (
                       <motion.div
@@ -1161,13 +1212,13 @@ export default function RankingPage() {
                         exit={{ opacity: 0 }}
                         className="space-y-3"
                       >
-                        {countries.slice(0, 50).map((country, index) => (
+                        {/* {countries.slice(0, 50).map((country, index) => (
                           <CountryRankingCard
                             key={country.country}
                             country={country}
                             rank={index + 1}
                           />
-                        ))}
+                        ))} */}
                       </motion.div>
                     )}
                   </AnimatePresence>

@@ -108,7 +108,7 @@ export default function AuthPage() {
         )}
 
         {/* ===== Social ===== */}
-        <div className="mt-8 pt-8 border-t border-gray-200">
+        {/* <div className="mt-8 pt-8 border-t border-gray-200">
           <p className="text-center text-sm text-gray-500 mb-4">
             Hoặc tiếp tục với
           </p>
@@ -121,15 +121,15 @@ export default function AuthPage() {
               GitHub
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
 
-      <div className="mt-6 text-center text-sm text-gray-600">
+      {/* <div className="mt-6 text-center text-sm text-gray-600">
         Bằng việc đăng nhập, bạn đồng ý với{" "}
         <span className="text-blue-600 cursor-pointer">
           Điều khoản & Chính sách
         </span>
-      </div>
+      </div> */}
     </div>
   );
 }

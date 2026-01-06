@@ -70,7 +70,7 @@ export default function RegisterForm({
         }
       } else {
         // Mặc định redirect về dashboard
-        router.push("/dashboard");
+        router.push("/");
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -126,7 +126,7 @@ export default function RegisterForm({
           onChange={handleChange}
           required
           disabled={isLoading}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full text-black px-4 py-3 border placeholder:text-gray-400 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
           placeholder="you@example.com"
         />
       </div>
@@ -147,7 +147,7 @@ export default function RegisterForm({
           required
           minLength={6}
           disabled={isLoading}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full px-4 py-3 border text-black placeholder:text-gray-400 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${
             passwordError ? "border-red-300" : "border-gray-300"
           }`}
           placeholder="••••••••"
@@ -171,7 +171,7 @@ export default function RegisterForm({
           required
           minLength={6}
           disabled={isLoading}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full px-4 py-3 border text-black placeholder:text-gray-400 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition disabled:opacity-50 disabled:cursor-not-allowed ${
             passwordError ? "border-red-300" : "border-gray-300"
           }`}
           placeholder="••••••••"
